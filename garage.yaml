@@ -1,0 +1,14 @@
+# AI Dev Garage — global install configuration
+# After install, a copy is written to ~/.ai-dev-garage/garage.yaml
+
+version: "1.0"
+
+extensions:
+  agile:
+    enabled: true
+  dev-common:
+    enabled: true
+  telegram:
+    enabled: false
+  youtube:
+    enabled: false
