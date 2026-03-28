@@ -16,6 +16,8 @@ export AI_DEV_GARAGE="${AI_DEV_GARAGE:-$PIPELINE_ROOT}"
 
 # shellcheck source=colors.sh
 source "$SCRIPT_DIR/colors.sh"
+# shellcheck source=pipeline-sync.sh
+source "$SCRIPT_DIR/pipeline-sync.sh"
 
 # ---------------------------------------------------------------------------
 # Menu definition: (label, description, command-key)
@@ -258,9 +260,11 @@ _run_command() {
       echo "${CLR_DIM}  Installs core + selected extensions to ~/.ai-dev-garage.${CLR_RST}"
       echo ""
       local ext_input
-      ext_input="$(_prompt "Extensions to install (comma-separated, blank = all enabled)" "")"
+      ext_input="$(_prompt "Extensions to install (comma-separated, blank = core only)" "")"
       local force_flag=""
       _prompt_yn "Overwrite existing files (--force)?" "n" && force_flag="--force" || true
+      echo ""
+      garage_sync_pipeline_from_origin "$PIPELINE_ROOT"
       echo ""
       local args=()
       [ -n "$ext_input" ] && args+=(--ext "$ext_input")
@@ -282,6 +286,8 @@ _run_command() {
       local force_flag=""
       _prompt_yn "Overwrite existing files (--force)?" "n" && force_flag="--force" || true
       echo ""
+      garage_sync_pipeline_from_origin "$PIPELINE_ROOT"
+      echo ""
       local args=("$proj_path")
       [ -n "$install_core" ] && args+=("$install_core")
       [ -n "$ext_input" ] && args+=(--ext "$ext_input")
@@ -292,9 +298,9 @@ _run_command() {
     update-global)
       echo "${CLR_BOLD}  Update — Global${CLR_RST}"
       echo ""
-      echo "${CLR_DIM}  Pulls latest pipeline changes and re-installs non-locked components.${CLR_RST}"
+      echo "${CLR_DIM}  Optionally syncs git with origin/master, then re-installs non-locked components.${CLR_RST}"
       echo ""
-      _prompt_yn "Proceed?" "y" || { echo "${CLR_DIM}  Cancelled.${CLR_RST}"; return; }
+      garage_sync_pipeline_from_origin "$PIPELINE_ROOT"
       echo ""
       bash "$GARAGE_SCRIPTS/internal/global-install.sh" --update-mode
       ;;
@@ -304,6 +310,10 @@ _run_command() {
       echo ""
       local proj_path
       proj_path="$(_prompt "Project path" ".")"
+      echo ""
+      echo "${CLR_DIM}  Optionally syncs pipeline repo with origin/master, then updates the project install.${CLR_RST}"
+      echo ""
+      garage_sync_pipeline_from_origin "$PIPELINE_ROOT"
       echo ""
       bash "$GARAGE_SCRIPTS/internal/project-install.sh" "$proj_path" --update-mode
       ;;

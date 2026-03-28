@@ -1,5 +1,10 @@
 # AI Dev Garage — global install configuration
 # After install, a copy is written to ~/.ai-dev-garage/garage.yaml
+#
+# Default global install is core-only. Extensions are added with:
+#   garage install --ext <id>   or   garage install --ext id1,id2
+#
+# The `enabled` flags below are catalog hints only; they do not auto-install extensions.
 
 version: "1.0"
 

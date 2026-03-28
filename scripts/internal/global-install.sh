@@ -8,7 +8,7 @@
 #
 # Flags:
 #   --force          Overwrite without prompting
-#   --ext name,...   Comma-separated list of extensions to install (default: all enabled in garage.yaml)
+#   --ext name,...   Comma-separated list of extensions to install (default: core only)
 #   --update-mode    Skip locked components (used internally by garage update)
 #   -h, --help       Show this help
 #
@@ -27,16 +27,16 @@ show_help() {
   echo ""
   echo "${CLR_BOLD}Usage:${CLR_RST} ${CLR_CMD}garage install${CLR_RST} [options]"
   echo ""
-  echo "  Install AI Dev Garage core and extensions globally."
+  echo "  Install AI Dev Garage core globally under ~/.ai-dev-garage (extensions are opt-in)."
   echo ""
   echo "${CLR_BOLD}Options:${CLR_RST}"
-  echo "  ${CLR_OPT}--ext name[,name]${CLR_RST}   Extensions to install (default: all enabled in garage.yaml)"
+  echo "  ${CLR_OPT}--ext name[,name]${CLR_RST}   Extensions to install (omit for core only)"
   echo "  ${CLR_OPT}--force${CLR_RST}             Overwrite existing files without prompting"
   echo "  ${CLR_OPT}-h, --help${CLR_RST}          Show this help"
   echo ""
   echo "${CLR_BOLD}Examples:${CLR_RST}"
-  echo "  ${CLR_CMD}garage install${CLR_RST}                           Install core + default extensions"
-  echo "  ${CLR_CMD}garage install${CLR_RST} ${CLR_OPT}--ext agile,dev-common${CLR_RST}   Install specific extensions"
+  echo "  ${CLR_CMD}garage install${CLR_RST}                           Core only (default)"
+  echo "  ${CLR_CMD}garage install${CLR_RST} ${CLR_OPT}--ext agile,dev-common${CLR_RST}   Core + listed extensions"
   echo ""
 }
 
@@ -94,14 +94,19 @@ TARGET_HOME="${TARGET_HOME:-$HOME}"
 
 # ---------------------------------------------------------------------------
 # Resolve extensions to install
+#   --ext given: use that list
+#   update mode: re-install extensions already recorded in ~/.ai-dev-garage/manifest.yaml
+#   fresh install: core only (empty EXT_LIST)
 # ---------------------------------------------------------------------------
 if [ -n "$EXT_FILTER" ]; then
   IFS=',' read -r -a EXT_LIST <<< "$EXT_FILTER"
-else
+elif [ "$UPDATE_MODE" -eq 1 ]; then
   EXT_LIST=()
   while IFS= read -r ext_id; do
     [ -n "$ext_id" ] && EXT_LIST+=("$ext_id")
-  done < <(python3 "$MANIFEST_PY" list-extensions --pipeline-root "$PIPELINE_ROOT" 2>/dev/null || true)
+  done < <(python3 "$MANIFEST_PY" list-installed-extensions --target "$GARAGE_HOME/manifest.yaml" 2>/dev/null || true)
+else
+  EXT_LIST=()
 fi
 
 # ---------------------------------------------------------------------------
@@ -274,7 +279,9 @@ install_extension() {
 # ---------------------------------------------------------------------------
 install_core
 
-for ext_id in "${EXT_LIST[@]}"; do
+# bash 3.2 + set -u: "${EXT_LIST[@]}" is an error when the array is empty — use index loops
+for (( _i=0; _i<${#EXT_LIST[@]}; _i++ )); do
+  ext_id="${EXT_LIST[_i]}"
   [ -n "$ext_id" ] || continue
   install_extension "$ext_id"
 done
@@ -319,7 +326,8 @@ MANIFEST_ARGS=(
 )
 [ "$UPDATE_MODE" -eq 1 ] && MANIFEST_ARGS+=(--preserve-installed-at)
 
-for ext_id in "${EXT_LIST[@]}"; do
+for (( _i=0; _i<${#EXT_LIST[@]}; _i++ )); do
+  ext_id="${EXT_LIST[_i]}"
   [ -n "$ext_id" ] || continue
   local_ext_dir="$EXT_ROOT/$ext_id"
   ext_ver="$(python3 "$MANIFEST_PY" get-version --component-path "$local_ext_dir" 2>/dev/null || echo "unknown")"
@@ -374,6 +382,14 @@ echo "${CLR_CMD}Global install complete.${CLR_RST}"
 echo "${CLR_DIM}  Runtime: $GARAGE_HOME${CLR_RST}"
 echo "${CLR_DIM}  Cursor:  $CURSOR_ROOT/{agents,commands,skills,rules,memory}${CLR_RST}"
 echo "${CLR_DIM}  Claude:  $CLAUDE_ROOT/{agents,commands,skills,rules}${CLR_RST}"
+
+if [ "$UPDATE_MODE" -eq 0 ] && [ "${#EXT_LIST[@]}" -eq 0 ]; then
+  echo ""
+  echo "${CLR_OPT}Next — extensions:${CLR_RST} only ${CLR_CMD}core${CLR_RST} was installed. Add more when you need them:"
+  echo "${CLR_DIM}  ${CLR_CMD}garage install --ext <id>${CLR_DIM}   e.g. ${CLR_CMD}garage install --ext agile${CLR_DIM} or ${CLR_CMD}--ext agile,dev-common${CLR_DIM}"
+  echo "${CLR_DIM}  ${CLR_CMD}garage update${CLR_DIM}            refresh files for core + already-installed extensions"
+  echo "${CLR_DIM}  IDs live under ${CLR_CMD}\$AI_DEV_GARAGE/extensions/${CLR_DIM}; see ${CLR_CMD}~/.ai-dev-garage/garage.yaml${CLR_DIM} after install.${CLR_RST}"
+fi
 
 # Reminder: ~/.zshrc is only read at shell startup unless sourced
 if [ "$UPDATE_MODE" -eq 0 ] && [ "$TARGET_HOME" = "$HOME" ]; then
