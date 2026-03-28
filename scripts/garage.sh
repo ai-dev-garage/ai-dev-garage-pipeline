@@ -26,6 +26,8 @@ MANIFEST_PY="$INTERNAL/manifest.py"
 
 # shellcheck source=internal/colors.sh
 source "$INTERNAL/colors.sh"
+# shellcheck source=internal/pipeline-sync.sh
+source "$INTERNAL/pipeline-sync.sh"
 
 # ---------------------------------------------------------------------------
 # Banner (not shown for -h / --help; see dispatch below)
@@ -76,20 +78,10 @@ show_help() {
 }
 
 # ---------------------------------------------------------------------------
-# git pull (non-fatal — runs silently if offline or not in a git repo)
+# git fetch + optional pull (non-fatal). Interactive TTY: ask before pull; n = skip pull only.
 # ---------------------------------------------------------------------------
 sync_pipeline() {
-  if git -C "$PIPELINE_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    if git -C "$PIPELINE_ROOT" fetch origin master --quiet 2>/dev/null; then
-      local behind
-      behind="$(git -C "$PIPELINE_ROOT" rev-list HEAD..origin/master --count 2>/dev/null || echo 0)"
-      if [ "$behind" -gt 0 ]; then
-        echo "${CLR_OPT}  Pulling $behind new commit(s) from origin/master...${CLR_RST}"
-        git -C "$PIPELINE_ROOT" pull --ff-only origin master --quiet 2>/dev/null || \
-          echo "${CLR_WARN}  Warning: could not fast-forward. Continuing with local version.${CLR_RST}"
-      fi
-    fi
-  fi
+  garage_sync_pipeline_from_origin "$PIPELINE_ROOT"
 }
 
 # ---------------------------------------------------------------------------

@@ -22,7 +22,7 @@ export TARGET_HOME="$TMP"
 
 mkdir -p "$TMP/.cursor" "$TMP/.claude"
 
-echo "${CLR_DIM}Running dry-run install into $TMP ...${CLR_RST}"
+echo "${CLR_DIM}Running dry-run install into $TMP (core only, then +extensions) ...${CLR_RST}"
 bash "$SCRIPT_DIR/internal/global-install.sh" --force 2>&1
 
 # ---------------------------------------------------------------------------
@@ -85,11 +85,17 @@ assert_dir "$GARAGE_HOME/commands/ai-dev-garage"
 assert_file "$GARAGE_HOME/commands/ai-dev-garage/create-agent.md"
 assert_file "$GARAGE_HOME/commands/ai-dev-garage/create-skill.md"
 
-# Agile extension assets
+# Default install must not copy extension-prefixed assets
+if [ -f "$GARAGE_HOME/agents/agile-define-feature.md" ]; then
+  echo "${CLR_ERR}FAIL: expected core-only install; found agile agent${CLR_RST}" >&2
+  FAIL=1
+fi
+
+# Second pass: install extensions (manifest records them; update path is covered)
+bash "$SCRIPT_DIR/internal/global-install.sh" --force --ext agile,dev-common 2>&1
+
 assert_file "$GARAGE_HOME/agents/agile-define-feature.md"
 assert_dir  "$GARAGE_HOME/skills/agile-acceptance-criteria-generation"
-
-# dev-common extension
 assert_file "$GARAGE_HOME/commands/dev-common-update-constitution.md"
 
 # Master manifest

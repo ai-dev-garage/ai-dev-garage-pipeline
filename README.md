@@ -7,10 +7,10 @@ Portable **filesystem** AI workflow runtime for **Cursor** and **Claude Code**: 
 | Path | Purpose |
 |------|---------|
 | `core/` | Runtime agents, commands, skills, rules, memory |
-| `extensions/` | Optional extensions (`manifest.yaml` + assets); enable in `garage.yaml` |
+| `extensions/` | Optional extensions (`manifest.yaml` + assets); install with `garage install --ext <id>` |
 | `scripts/` | `garage.sh`, `banner.sh`, `internal/*.sh`, `internal/manifest.py` |
 | `docs/` | Schemas for `garage.yaml` and `manifest.yaml` |
-| `garage.yaml` | Which extensions are enabled |
+| `garage.yaml` | Extension catalog (hints); copied to `~/.ai-dev-garage/` — does not auto-install |
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ Portable **filesystem** AI workflow runtime for **Cursor** and **Claude Code**: 
 
 1. **Clone or copy** this repo to a stable path (e.g. `~/projects/ai-dev-garage-pipeline`).
 
-2. **Run a global install** (copies core + enabled extensions to `~/.ai-dev-garage`, symlinks `~/.cursor` and `~/.claude`, writes `~/.ai-dev-garage/manifest.yaml`):
+2. **Run a global install** — by default this installs **core only** (agents, commands, skills, rules, memory from `core/`) into `~/.ai-dev-garage`, symlinks `~/.cursor` and `~/.claude`, and writes `~/.ai-dev-garage/manifest.yaml`. **Extensions are opt-in.**
 
    ```bash
    cd /path/to/ai-dev-garage-pipeline
@@ -39,6 +39,15 @@ Portable **filesystem** AI workflow runtime for **Cursor** and **Claude Code**: 
    ```
 
    You can also run without execute bit: `bash scripts/garage.sh install --force`
+
+   **Add extensions** when you want them (comma-separated):
+
+   ```bash
+   garage install --ext agile
+   garage install --ext agile,dev-common
+   ```
+
+   **`garage update`** refreshes core and any extensions already recorded in your manifest (respects locks). Browse IDs under `extensions/` in the repo or `~/.ai-dev-garage/garage.yaml` after install.
 
 3. **Add the `garage` command** so you can type `garage` in any terminal (pick one):
 
@@ -80,6 +89,16 @@ Portable **filesystem** AI workflow runtime for **Cursor** and **Claude Code**: 
 
 Restart Cursor / Claude Code so they pick up the new paths.
 
+## Install vs update vs adding extensions
+
+- **`garage install` (global)** — Copies **core** into `~/.ai-dev-garage` by default. Extensions are **not** taken from `garage.yaml` automatically; you pass them explicitly, e.g. `garage install --ext agile` or `garage install --ext agile,dev-common`. The master manifest (`~/.ai-dev-garage/manifest.yaml`) lists which extension IDs are installed.
+
+- **`garage update` (global)** — Re-copies **core** and **only extensions that are already listed** in that master manifest (skips locked components). It does **not** install new extension IDs you never asked for. If you see `agile` / `dev-common` during update, they were already recorded from a previous `garage install --ext ...`.
+
+- **Adding another extension later** — Run `garage install --ext <newid>` (or comma-separated list). Existing manifest rows for other extensions are **preserved**; the new ID is merged in and its files are copied.
+
+- **Project installs** — Same idea: `--ext` selects extensions; project `manifest.yaml` tracks what is installed; `garage update --project <path>` refreshes what was already recorded for that project.
+
 ## Project overrides
 
 ```bash
@@ -94,11 +113,11 @@ Creates `project/.ai-dev-garage/` and symlinks `project/.cursor` / `project/.cla
 2. Entry commands: `/plan`, `/execute`, `/summarize`, `/reflect`, `/ship` (see `core/commands/`).
 3. Always-on rule: `core/rules/garage-runtime.md` (installed to `~/.ai-dev-garage/rules/`).
 
-## Extensions
+## Extensions (pipeline authors)
 
-- Add `extensions/<id>/manifest.yaml` and assets.
-- Set `extensions.<id>.enabled: true` in `garage.yaml`.
-- Re-run `garage install --force`. Installed files are **flat** with `<name>-` prefixes for extension assets.
+- Add `extensions/<id>/manifest.yaml` and assets under this repo.
+- Optional: document the ID under `garage.yaml` (catalog hints; does not auto-install).
+- Users install with `garage install --ext <id>`. Installed files are **flat** with `<name>-` prefixes for extension assets.
 
 See [docs/manifest-yaml.schema.md](docs/manifest-yaml.schema.md) and [docs/garage-yaml.schema.md](docs/garage-yaml.schema.md).
 

@@ -16,6 +16,7 @@ Usage:
   manifest.py lock             --target <manifest.yaml> <core|ext-name>
   manifest.py unlock           --target <manifest.yaml> <core|ext-name>
   manifest.py read-status      --target <manifest.yaml>
+  manifest.py list-installed-extensions --target <manifest.yaml>
 """
 
 import sys
@@ -56,13 +57,22 @@ def now_iso():
 # ---------------------------------------------------------------------------
 
 def cmd_list_extensions(args):
-    """Print enabled extension IDs (one per line) from garage.yaml."""
+    """Print extension IDs marked enabled in garage.yaml (catalog / docs only)."""
     garage_yaml = os.path.join(args.pipeline_root, "garage.yaml")
     cfg = load_yaml(garage_yaml)
     extensions = cfg.get("extensions") or {}
     for name, opts in extensions.items():
         if isinstance(opts, dict) and opts.get("enabled") is True:
             print(name)
+
+
+def cmd_list_installed_extensions(args):
+    """Print extension IDs present in the master manifest (one per line)."""
+    if not os.path.isfile(args.target):
+        return
+    data = load_yaml(args.target)
+    for name in sorted((data.get("extensions") or {}).keys()):
+        print(name)
 
 
 def cmd_get_prefix(args):
@@ -94,20 +104,36 @@ def cmd_get_version(args):
 
 
 def cmd_write_master(args):
-    """Create or update the master manifest at --target."""
+    """Create or update the master manifest at --target.
+
+    Extension entries are merged: existing manifest extensions are kept unless this run
+    passes --ext for an ID (then version is refreshed; lock state preserved per ID).
+    A partial ``garage install --ext foo`` therefore adds/refreshes ``foo`` without removing
+    other installed extensions. Omitting ``--ext`` entirely does not drop extension rows.
+    """
     target = args.target
     existing = load_yaml(target) if os.path.isfile(target) else {}
 
     now = now_iso()
     installed_at = existing.get("installed_at", now) if args.preserve_installed_at else now
 
-    # Build extensions map preserving existing lock state
+    # Seed from existing manifest so we never wipe unrelated extension rows on partial install.
     ext_data = {}
+    for name, info in (existing.get("extensions") or {}).items():
+        if not isinstance(info, dict):
+            continue
+        ext_data[name] = {
+            "version": (info.get("version") or "unknown") or "unknown",
+            "locked": bool(info.get("locked", False)),
+        }
+
     for pair in (args.ext or []):
         name, _, version = pair.partition("=")
         name = name.strip()
-        version = version.strip() or "unknown"
+        version = (version.strip() or "unknown")
         prev = (existing.get("extensions") or {}).get(name, {})
+        if not isinstance(prev, dict):
+            prev = {}
         ext_data[name] = {
             "version": version,
             "locked": bool(prev.get("locked", False)),
@@ -216,8 +242,12 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
 
     # list-extensions
-    p = sub.add_parser("list-extensions", help="Print enabled extension IDs from garage.yaml")
+    p = sub.add_parser("list-extensions", help="Print extension IDs with enabled: true in garage.yaml")
     p.add_argument("--pipeline-root", required=True)
+
+    # list-installed-extensions
+    p = sub.add_parser("list-installed-extensions", help="Print extension IDs from a master manifest")
+    p.add_argument("--target", required=True)
 
     # get-prefix
     p = sub.add_parser("get-prefix", help="Print name from extensions/<id>/manifest.yaml")
@@ -261,6 +291,7 @@ def main():
 
     dispatch = {
         "list-extensions": cmd_list_extensions,
+        "list-installed-extensions": cmd_list_installed_extensions,
         "get-prefix":      cmd_get_prefix,
         "get-version":     cmd_get_version,
         "write-master":    cmd_write_master,
