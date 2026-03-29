@@ -11,7 +11,9 @@ version: "1.0"
 extensions:
   agile:
     enabled: true
-  dev-common:
+  dev-workflow:
+    enabled: true
+  jira:
     enabled: true
   telegram:
     enabled: false

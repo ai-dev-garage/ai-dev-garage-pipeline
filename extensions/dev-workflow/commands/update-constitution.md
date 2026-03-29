@@ -11,17 +11,25 @@ $ARGUMENTS
 
 ## Outline
 
-0. **Resolve target project**
+1. If arguments are `help`, `-h`, or `--help`, print what this command does, when to use it, and stop after **Usage** below.
+
+   **What:** Creates or updates `<PROJECT_ROOT>/CONSTITUTION.md`: placeholders, semver, governance dates, propagation to dependent docs, validation, and a sync impact report (HTML comment).
+
+   **When:** Bootstrapping governance, amending principles, or aligning docs after constitution changes.
+
+   **Usage:** Optional `project=<path>` for `PROJECT_ROOT`; otherwise workspace or the single tree containing `CONSTITUTION.md` (if ambiguous, ask). Pass free-text instructions for partial updates (e.g. one principle).
+
+2. **Resolve target project**
    - Parse user input for `project=<path>`. If present, use that as `PROJECT_ROOT`. If not: use workspace root or the single directory containing a `CONSTITUTION.md`; if ambiguous, ask the user.
    - Set `CONSTITUTION_PATH` = `<PROJECT_ROOT>/CONSTITUTION.md`.
 
-1. **Load or initialize the constitution**
+3. **Load or initialize the constitution**
    - Check if `CONSTITUTION_PATH` exists.
    - If it exists, load it and identify every placeholder token of the form `[ALL_CAPS_IDENTIFIER]`.
-   - If it does NOT exist, create it from the Default Constitution Template at the bottom of this command.
+   - If it does NOT exist, create it from the default template file `default-constitution-template.md`. Resolve `TEMPLATE_PATH` by walking **`GARAGE_SEARCH_ROOTS`** in order: for each root `R`, use the first existing path among (1) `R/commands/references/default-constitution-template.md` (extension source tree), (2) any `R/commands/references/*/default-constitution-template.md` (merged install, e.g. `.../references/dev-workflow/default-constitution-template.md`).
    - If the user specifies a different number of principles than the template, adapt the structure accordingly.
 
-2. **Collect or derive values for placeholders**
+4. **Collect or derive values for placeholders**
    - If user input supplies a value, use it.
    - Otherwise infer from existing repo context (README, docs, prior constitution if embedded).
    - For governance dates:
@@ -34,36 +42,36 @@ $ARGUMENTS
    - If bump type is ambiguous, propose reasoning before finalizing.
    - First creation always starts at `1.0.0`.
 
-3. **Draft the updated constitution**
+5. **Draft the updated constitution**
    - Replace every placeholder with concrete text. No bracketed tokens may remain unless the project has explicitly chosen to defer them — justify any deferred token.
    - Preserve heading hierarchy; remove explanatory comments once replaced.
    - Each Principle section: succinct name line, declarative rules paragraph or bullet list, explicit rationale if not obvious.
    - Governance section must cover: amendment procedure, versioning policy, compliance expectations.
 
-4. **Consistency propagation**
+6. **Consistency propagation**
    - Scan `PROJECT_ROOT` for any docs that reference principles by name or number (e.g., `README.md`, `docs/`, architecture decision records). Update stale references.
    - If any pipeline or command files under `PROJECT_ROOT` reference principles, verify alignment.
    - Only process files that actually exist; skip gracefully for missing ones.
 
-5. **Produce a Sync Impact Report** (prepend as an HTML comment at the top of the written file):
+7. **Produce a Sync Impact Report** (prepend as an HTML comment at the top of the written file):
    - Version change: old → new (or "initial creation").
    - Principles modified (old title → new title if renamed).
    - Sections added / removed.
    - Dependent files updated (✅ updated / ⚠ pending / ➖ not present).
    - Deferred TODOs if any placeholders were intentionally left.
 
-6. **Validate before writing**
+8. **Validate before writing**
    - No unexplained bracket tokens remain.
    - Version line matches the report.
    - Dates are ISO format `YYYY-MM-DD`.
    - Principles are declarative and use MUST/SHOULD with rationale where "should" appeared vaguely.
 
-7. **Write** the completed constitution to `CONSTITUTION_PATH` (overwrite).
+9. **Write** the completed constitution to `CONSTITUTION_PATH` (overwrite).
 
-8. **Output a final summary** to the user:
-   - New version and bump rationale.
-   - Files flagged for manual follow-up.
-   - Suggested commit message (e.g., `docs: amend constitution to vX.Y.Z — <brief reason>`).
+10. **Output a final summary** to the user:
+    - New version and bump rationale.
+    - Files flagged for manual follow-up.
+    - Suggested commit message (e.g., `docs: amend constitution to vX.Y.Z — <brief reason>`).
 
 ---
 
@@ -77,76 +85,3 @@ $ARGUMENTS
 If user supplies partial updates (e.g., one principle revision only), still perform full validation and version decision.
 
 If critical info is missing (e.g., ratification date on first creation), insert `TODO(<FIELD_NAME>): explanation` and include it in the Sync Impact Report.
-
----
-
-## Default Constitution Template
-
-Use this template when `CONSTITUTION_PATH` does not exist:
-
-```markdown
-# [PROJECT_NAME] Constitution
-
-**Version**: [CONSTITUTION_VERSION]
-**Ratified**: [RATIFICATION_DATE]
-**Last Amended**: [LAST_AMENDED_DATE]
-
-## Purpose
-
-This constitution defines the core principles and governance rules for the [PROJECT_NAME] project. It serves as the foundational contract between contributors and any AI agents involved, ensuring consistency, quality, and alignment with project goals.
-
-## Core Principles
-
-### Principle 1: [PRINCIPLE_1_NAME]
-
-[PRINCIPLE_1_DESCRIPTION]
-
-**Rationale**: [PRINCIPLE_1_RATIONALE]
-
-### Principle 2: [PRINCIPLE_2_NAME]
-
-[PRINCIPLE_2_DESCRIPTION]
-
-**Rationale**: [PRINCIPLE_2_RATIONALE]
-
-### Principle 3: [PRINCIPLE_3_NAME]
-
-[PRINCIPLE_3_DESCRIPTION]
-
-**Rationale**: [PRINCIPLE_3_RATIONALE]
-
-## Governance
-
-### Amendment Procedure
-
-1. Proposed amendments must be documented with clear rationale before applying.
-2. Version must be incremented according to semantic versioning:
-   - **MAJOR**: Breaking changes to principles or governance structure.
-   - **MINOR**: New principles or significant expansions.
-   - **PATCH**: Clarifications and non-semantic improvements.
-3. All dependent documentation must be updated to maintain consistency.
-4. The `Last Amended` date must be updated on every change.
-
-### Compliance
-
-- All contributors MUST adhere to the principles defined in this constitution.
-- AI agents working on this project MUST operate within the constraints set here.
-- Regular reviews should be conducted to ensure ongoing compliance and relevance.
-
-### Versioning Policy
-
-This constitution follows semantic versioning (MAJOR.MINOR.PATCH). Each version change must document:
-
-- What changed and why.
-- Impact on existing work.
-- Affected documentation or dependent assets.
-
-## Maintenance
-
-Review and update this constitution:
-
-- When project requirements or constraints significantly change.
-- When new capabilities or limitations are discovered.
-- When team composition or workflow evolves.
-- At minimum, annually as part of project governance review.
-```

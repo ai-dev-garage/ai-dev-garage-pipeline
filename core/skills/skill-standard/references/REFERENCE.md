@@ -56,6 +56,73 @@ Use this split when moving content out of `SKILL.md`.
 
 **Rule of thumb:** If skipping the file would change *how* the agent reasons or orders work → **`references/`**. If the file is mainly *material to read or copy when relevant* → **`assets/`**.
 
+## Secrets & credentials
+
+### No solicitation in chat
+
+- Authored skills must **never** ask the user to paste or type passwords, API tokens, private keys, or other secrets in chat.
+- Runtimes and scripts may **read** secrets from the process environment or from **local, gitignored** files; they must **not** request secret values in the conversation.
+
+### If the skill depends on secrets
+
+The skill must document **at least one** of:
+
+1. **Environment variables** — list each name; tell the user to set them in the shell, IDE, CI, or deployment environment.
+2. **`.env` workflow** — describe a **local** env file (gitignored), how to create it (e.g. copy from the committed template), and how tooling loads it—without asking for secret values in chat.
+
+### `references/` vs `assets/` for secrets
+
+| What | Where | Why |
+|------|--------|-----|
+| Filled env file with real secrets | **Not in the repo** | User- or machine-local only; gitignored; never committed. |
+| Template (placeholders only, safe to commit) | **`assets/`** e.g. `assets/<skill-name>.template.env` | Schema/template material belongs in **`assets/`**. |
+| Required variable names, precedence, copy steps, gitignore reminders | **`references/`** | Procedure and reasoning the agent must follow. |
+
+**SKILL.md** links in one line each to the relevant `references/*` file and, if present, `assets/<skill-name>.template.env`. Do not embed secret values or multiline “example” credentials in SKILL.md.
+
+### Installed Garage bundle: where to read `<skill-name>.env`
+
+After **garage** install, skills live under **`$BUNDLE_ROOT/skills/<skill-name>/`** (global `~/.ai-dev-garage/…` or project `<PROJECT_ROOT>/.ai-dev-garage/…`).
+
+**Canonical dedicated file** (user-created; not shipped from pipeline source): **`$BUNDLE_ROOT/skills/<skill-name>/<skill-name>.env`** next to that skill’s `SKILL.md`. Install copies only files from the package; an extra `*.env` file in that directory is not removed by current install logic, so it survives updates.
+
+**Suggested precedence** (state explicitly in `references/`; implement consistently in scripts):
+
+1. **Process environment** — exported variables usually **override** the same key from a file unless the skill documents otherwise.
+2. **Project bundle** — if present, read `<PROJECT_ROOT>/.ai-dev-garage/skills/<skill-name>/<skill-name>.env`.
+3. **Global bundle** — else read `~/.ai-dev-garage/skills/<skill-name>/<skill-name>.env` when present.
+
+Skills may also mention **`$PROJECT_ROOT/.env`** when that matches the workspace tool chain; the **Garage-native default** is still the co-located **`<skill-name>.env`** under the active bundle’s `skills/<skill-name>/`.
+
+### Project `.gitignore` (application repos)
+
+Ignore real env files while keeping committed templates:
+
+- `*.env` matches names ending in `.env` (including `*.template.env`) unless negated—pair with `!*.template.env`.
+- Many Git versions do **not** match the file `.env` with `*.env` (leading dot)—list **`.env`** explicitly.
+
+Example (tune per repo; add `!.env.example` if you commit `.env.example` and a broader pattern would ignore it):
+
+```gitignore
+.env
+*.env
+!*.template.env
+```
+
+### Scripts
+
+Load configuration from env or from the documented file path; do not print secret values to logs or chat; do not hardcode credentials in SKILL.md or committed files.
+
+## Pipeline source boundary (core and extensions)
+
+Applies when authoring or reviewing skills that **ship from this pipeline repository** (paths under **`core/`** or **`extensions/<extension-id>/`**).
+
+1. **No out-of-tree source dependencies** — Do not require links, imports, or “read file at …” targets that point **outside** the repo’s **`core/`** and **`extensions/`** directories (e.g. another Git repo, a personal `~/skills/` tree, or a third-party bundle path as the canonical source for bundled behavior). Product docs URLs for Cursor/Claude are fine; **required** operational dependencies must live under **`core/`** or **`extensions/`**.
+
+2. **Cross-extension references unsupported (for now)** — An extension must **not** hard-depend on another extension’s assets (e.g. `extensions/jira/…` must not require `extensions/agile/…`). Extension packages may use **core** plus **their own** `extensions/<id>/` subtree only, until the project explicitly supports extension-to-extension coupling.
+
+3. **Install-time paths** — Instructions may still describe resolution using caller-supplied **`GARAGE_BUNDLE_ROOT`**, **`TARGET_SKILL_DIR`**, or **`GARAGE_SEARCH_ROOTS`** after install; that is runtime layout, not a dependency on unpublished source outside the pipeline.
+
 ## Frontmatter (Garage baseline)
 
 | Field | Required | Notes |
@@ -89,8 +156,14 @@ Garage does not require Claude-only fields; add them when the skill is meant for
 
 ## Naming
 
-- **Noun or noun phrase:** `normalize-intent`, `generate-acceptance-criteria`, `jira-field-mapper`.
-- Avoid verb-only skill names; meta tooling uses nouns like `skill-standard`, `pipeline-installer`.
+- **Noun or noun phrase:** `skill-standard`, `pipeline-installer`, `task-gap-clarification`, `jira-item-fetcher`, `feature-branch-guard`, `code-implementation`.
+- Avoid verb-based names (e.g. `fix-failing-tests`, `implement-code`, `align-agent-models`). Reframe as the thing the skill represents, not the action it performs.
+
+## No skill-to-skill references
+
+- A skill must **not** invoke, delegate to, or depend on another skill.
+- If a skill needs data that another skill produces (e.g. resolved config values), declare those as explicit **Input** fields. The calling agent resolves them first and passes them in.
+- This keeps skills stateless, composable, and independently testable.
 
 ## Scripts
 
@@ -161,7 +234,10 @@ Installers may symlink a user-global bundle to a path like `~/.ai-dev-garage/` a
 - [ ] `scripts/` holds runnable code; SKILL.md only references paths
 - [ ] **`references/` vs `assets/`:** “always know / reasoning / decision order / output format” content is under **`references/`**; optional, large, example-heavy, schema/template, lookup content is under **`assets/`**
 - [ ] Skill stays stateless unless explicitly documented otherwise
+- [ ] No references to other skills — data dependencies declared as Input fields
 - [ ] No hardcoded global/project/extension paths as the only way to find or write the package; caller-supplied **`TARGET_SKILL_DIR`** / bundle roots respected
+- [ ] **Secrets:** no chat solicitation; secret supply via env and/or documented `.env` workflow; templates only in **`assets/`**; rules in **`references/`**; see **Secrets & credentials** above
+- [ ] **Pipeline boundary (when source is `core/` or `extensions/`):** no required asset references outside **`core/`** + **`extensions/`**; no cross-extension hard dependencies
 
 ## Do not
 

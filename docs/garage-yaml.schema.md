@@ -17,7 +17,7 @@ version: "1.0"
 extensions:
   agile:
     enabled: true
-  dev-common:
+  dev-workflow:
     enabled: true
   telegram:
     enabled: false
@@ -28,5 +28,5 @@ Only extensions with `enabled: true` are merged into `~/.ai-dev-garage/` during 
 ## Notes
 
 - Extension metadata (name, version, description) lives in `extensions/<id>/manifest.yaml`, not here.
-- To install only specific extensions: `garage install --ext agile,dev-common`.
+- To install only specific extensions: `garage install --ext agile,dev-workflow`.
 - The installed runtime state is tracked in `~/.ai-dev-garage/manifest.yaml` (the master manifest), not in this file.

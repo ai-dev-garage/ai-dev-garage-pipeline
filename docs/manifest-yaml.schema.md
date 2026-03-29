@@ -72,9 +72,9 @@ extensions:
   agile:
     version: "1.0.0"
     locked: false
-  dev-common:
-    version: "1.0.0"
-    locked: true
+  dev-workflow:
+    version: "1.1.0"
+    locked: false
 
 custom:
   agents: []

@@ -39,7 +39,7 @@ show_help() {
   echo "${CLR_BOLD}Examples:${CLR_RST}"
   echo "  ${CLR_CMD}garage install${CLR_RST} ${CLR_OPT}--project ./myapp --core${CLR_RST}"
   echo "  ${CLR_CMD}garage install${CLR_RST} ${CLR_OPT}--project ./myapp --core --ext agile${CLR_RST}"
-  echo "  ${CLR_CMD}garage install${CLR_RST} ${CLR_OPT}--project ./myapp --ext dev-common${CLR_RST}"
+  echo "  ${CLR_CMD}garage install${CLR_RST} ${CLR_OPT}--project ./myapp --ext dev-workflow${CLR_RST}"
   echo ""
 }
 
@@ -237,6 +237,15 @@ install_extension() {
     while IFS= read -r -d '' f; do
       copy_file "$f" "$GARAGE_PROJ/commands/$(basename "$f")"
     done < <(find "$ext_dir/commands" -maxdepth 1 -type f -name "*.md" -print0 2>/dev/null)
+    if [ -d "$ext_dir/commands/references" ]; then
+      local cref="$GARAGE_PROJ/commands/references/$ext_id"
+      mkdir -p "$cref"
+      while IFS= read -r -d '' f; do
+        local rel="${f#$ext_dir/commands/references/}"
+        mkdir -p "$cref/$(dirname "$rel")"
+        cp "$f" "$cref/$rel"
+      done < <(find "$ext_dir/commands/references" -type f -print0 2>/dev/null)
+    fi
   fi
 
   if [ -d "$ext_dir/rules" ]; then

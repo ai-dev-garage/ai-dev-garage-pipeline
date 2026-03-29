@@ -44,7 +44,7 @@ Portable **filesystem** AI workflow runtime for **Cursor** and **Claude Code**: 
 
    ```bash
    garage install --ext agile
-   garage install --ext agile,dev-common
+   garage install --ext agile,dev-workflow
    ```
 
    **`garage update`** refreshes core and any extensions already recorded in your manifest (respects locks). Browse IDs under `extensions/` in the repo or `~/.ai-dev-garage/garage.yaml` after install.
@@ -91,9 +91,9 @@ Restart Cursor / Claude Code so they pick up the new paths.
 
 ## Install vs update vs adding extensions
 
-- **`garage install` (global)** — **Merges** **core** into `~/.ai-dev-garage` (overwrites pipeline-managed files; does **not** delete your whole runtime tree). Extensions are **not** taken from `garage.yaml` automatically; you pass them explicitly, e.g. `garage install --ext agile` or `garage install --ext agile,dev-common`. The master manifest (`~/.ai-dev-garage/manifest.yaml`) lists which extension IDs are installed.
+- **`garage install` (global)** — **Merges** **core** into `~/.ai-dev-garage` (overwrites pipeline-managed files; does **not** delete your whole runtime tree). Extensions are **not** taken from `garage.yaml` automatically; you pass them explicitly, e.g. `garage install --ext agile` or `garage install --ext agile,dev-workflow`. The master manifest (`~/.ai-dev-garage/manifest.yaml`) lists which extension IDs are installed.
 
-- **`garage update` (global)** — Re-merges **core** and **only extensions that are already listed** in that master manifest (skips locked components). It does **not** install new extension IDs you never asked for. If you see `agile` / `dev-common` during update, they were already recorded from a previous `garage install --ext ...`.
+- **`garage update` (global)** — Re-merges **core** and **only extensions that are already listed** in that master manifest (skips locked components). It does **not** install new extension IDs you never asked for. If you see `agile` / `dev-workflow` during update, they were already recorded from a previous `garage install --ext ...`.
 
 - **Adding another extension later** — Run `garage install --ext <newid>` (or comma-separated list). Existing manifest rows for other extensions are **preserved**; the new ID is merged in and its files are copied.
 

@@ -22,6 +22,15 @@ Use this skill to **create**, **update**, or **review** a **rule**. Full criteri
 - **Update:** Section-level edits; do not apply unless the user confirms.
 - **Review:** List of issues and proposed edits; do not apply unless the user confirms.
 
+## Mandatory checks (every create / update / review)
+
+Apply to the target rule’s **body** (constraints the model must follow—not interactive prompts in the rule file itself):
+
+1. **Single concern** — one topic per rule; split if mixing unrelated guidance.
+2. **No multi-step workflows or user interaction** in the rule file — still applies; the rule states *what the model must do*, not a chat script.
+3. **Secrets and credentials** — If the rule tells the model how to use tools, APIs, or local config, it must **not** encourage asking the user to paste passwords, tokens, or private keys in chat. It should require **environment variables** and/or **local gitignored** env files (e.g. `$BUNDLE_ROOT/skills/<skill-name>/<skill-name>.env`). This is **content** of the rule, not an exception to “no user interaction.” See [REFERENCE.md](references/REFERENCE.md) (“Secrets & credentials”).
+4. **Pipeline source boundary** — Rules shipped from pipeline **`core/`** or **`extensions/<id>/`** must not require the model to load or depend on **source assets outside** **`core/`** + **`extensions/`**. **Core** rules must not hard-depend on any extension’s assets. **Extension** rules must not hard-depend on **another extension’s** bundled files as mandatory context (cross-extension unsupported for now). See [REFERENCE.md](references/REFERENCE.md) (“Pipeline source boundary”).
+
 ## Mode
 
 - **Create:** New rule from description and REFERENCE.md criteria.
@@ -43,7 +52,7 @@ Use this skill to **create**, **update**, or **review** a **rule**. Full criteri
 ## Update flow
 
 1. Read the rule file and **references/REFERENCE.md**.
-2. Re-run mandatory checks; fix single-concern violations or format issues.
+2. Re-run **Mandatory checks**; fix single-concern violations or format issues.
 3. Present edits; do not apply unless the user confirms.
 4. After applied writes to **`global` / `project`**, the caller uses **bundle-custom-manifest** for the rule basename.
 
@@ -52,6 +61,7 @@ Use this skill to **create**, **update**, or **review** a **rule**. Full criteri
 ## Review flow
 
 1. Read **references/REFERENCE.md** and the target rule file.
-2. **Frontmatter:** `description` present; `globs` / `alwaysApply` correct if used.
-3. **Structure:** Single concern; short, actionable list; no workflow steps that belong in a skill/agent.
-4. **Present:** Issues and proposed edits; do not apply unless the user confirms.
+2. **Mandatory checks** from above.
+3. **Frontmatter:** `description` present; `globs` / `alwaysApply` correct if used.
+4. **Structure:** Single concern; short, actionable list; no workflow steps that belong in a skill/agent.
+5. **Present:** Issues and proposed edits; do not apply unless the user confirms.

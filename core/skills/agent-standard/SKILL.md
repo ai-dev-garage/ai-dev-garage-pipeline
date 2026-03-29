@@ -30,7 +30,9 @@ Apply to the target agent’s **`*.md`** file:
 2. **No multiline scripts in the agent file** — automation belongs in **`scripts/`** next to the agent only if the repo packages agents that way; otherwise keep agent files prose-only.
 3. **Frontmatter:** **Required:** `name`, `description`. **Recommended:** `skills`, `inputs`, `outputs`. **Optional:** `model`, `tags`, `constraints`, and tool-specific fields documented in REFERENCE.md. `name` must match the filename stem.
 4. **Paths:** Drafted agents must describe resolution using **caller-defined bundle roots** (e.g. ordered **`GARAGE_SEARCH_ROOTS`** or equivalent), not a single hardcoded global path. See REFERENCE.md.
-5. **`references/` vs `assets/`** for any bundled agent package — same rules as [skill-standard references/REFERENCE.md](../skill-standard/references/REFERENCE.md#references-vs-assets-what-goes-where).
+5. **`references/` vs `assets/`** for any bundled agent package — put material in **`references/`** when it affects reasoning, decision order, or output shape; put material in **`assets/`** when it is optional, large, example-heavy, schema/template, or lookup-style. See [REFERENCE.md](references/REFERENCE.md) for details.
+6. **Secrets and credentials:** The agent and any skills it delegates to must **never** ask the user to paste passwords, API tokens, or private keys in chat. **Rules** must point users to **environment variables** and/or **local gitignored** env files (e.g. `$BUNDLE_ROOT/skills/<skill-name>/<skill-name>.env`). Runtimes may read secrets from env or local gitignored files only. See [REFERENCE.md](references/REFERENCE.md) ("Secrets & credentials").
+7. **Pipeline source boundary:** Agents authored under the pipeline repo **`core/`** or **`extensions/<id>/`** must not require assets **outside** those trees as source dependencies. **Core** agents must not hard-depend on any extension’s assets. **Extension** agents must not hard-depend on **another extension’s** agents/skills/rules/commands (cross-extension unsupported for now). They may rely on **core** and their own extension subtree only. See [REFERENCE.md](references/REFERENCE.md) ("Pipeline source boundary").
 
 ## Mode
 
@@ -45,7 +47,7 @@ Apply to the target agent’s **`*.md`** file:
 1. **Name:** Verb-noun, lowercase, hyphenated; filename `<name>.md` must match frontmatter `name`.
 2. **Frontmatter:** Fill required and recommended fields per REFERENCE.md; declare **`skills`** as the authoritative list of skill dependencies.
 3. **Body:** Role → **Workflow** (numbered steps: Goal, Action, Output) → **Rules** (gates, persistence, resolution). Subagents add **When invoked**.
-4. **Rules:** Review gate, “do not persist until confirm” when applicable, **skill/agent search order over the bundle roots the command provides** (document variable names, not literal paths).
+4. **Rules:** Review gate, “do not persist until confirm” when applicable, **skill/agent search order over the bundle roots the command provides** (document variable names, not literal paths). For integrations that need secrets: no chat solicitation; document env var names and/or **`$BUNDLE_ROOT/skills/<skill-name>/<skill-name>.env`** (and precedence) per **Secrets & credentials** in [REFERENCE.md](references/REFERENCE.md).
 5. **Caller follow-up:** For **`global` / `project`** targets, the **`create-agent`** command ends with **bundle-custom-manifest** (**`skills/bundle-custom-manifest/SKILL.md`**) after writes—not inside this skill. **`extension:<name>`** skips master-manifest registration.
 
 ---
