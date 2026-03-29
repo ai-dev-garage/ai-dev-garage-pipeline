@@ -52,6 +52,20 @@ Workflow steps should **name skills in prose** (“Use the **normalize-intent** 
 - **Workflow:** Numbered steps. Each step: **Goal**, **Action** (cite skill names in bold), **Output**.
 - **Rules:** Persistence gates, path resolution, error handling, “do not duplicate command flow.”
 
+## Secrets & credentials (agents)
+
+- Agents must **never** instruct the user to paste secrets in chat.
+- Delegate secret handling to **skills** that use: named **environment variables**, optional **`assets/<skill-name>.template.env`** (placeholders only, safe to commit), and user-local **`$BUNDLE_ROOT/skills/<skill-name>/<skill-name>.env`** with documented precedence (env → project bundle → global bundle unless stated otherwise).
+- In **Rules**, tell the model to read config from those mechanisms only — not from user messages containing credentials.
+
+## Pipeline source boundary (agents in core and extensions)
+
+- No required references to source assets outside **`core/`** and **`extensions/`**.
+- **Core** agents must not hard-depend on any extension’s assets. They may rely on **core** only.
+- **Extension** agents must not hard-depend on **another extension’s** agents/skills/rules/commands (cross-extension unsupported for now). They may rely on **core** and their own **`extensions/<id>/`** subtree only.
+- **`skills` frontmatter** should list only skill names that the install can resolve from **core + that agent’s extension** (or core-only for core agents) — not another extension’s exclusive skills as a required dependency.
+- Install-time paths via caller-supplied **`GARAGE_BUNDLE_ROOT`** / **`TARGET_AGENT_FILE`** / **`GARAGE_SEARCH_ROOTS`** are fine and are not out-of-repo source dependencies.
+
 ## Naming
 
 - Verb-noun: `define-feature`, `plan-epic`, `scope-clarifier`.
@@ -118,4 +132,6 @@ Many installs use a user-global bundle directory and a project-local override di
 - [ ] No multiline executable scripts in the agent body
 - [ ] Workflow steps reference skills by name; manifest in `skills` list
 - [ ] Rules state persistence / review gate and **parameterized** path resolution (bundle roots), not a single hardcoded install path
+- [ ] **Secrets:** no solicitation in chat; integrations use env / bundle `.env` conventions (see **Secrets & credentials** above)
+- [ ] **Pipeline boundary:** for pipeline `core/` / `extensions/` sources, no out-of-tree source deps; no cross-extension hard deps (see **Pipeline source boundary** above)
 - [ ] Clear boundary vs skill and vs command

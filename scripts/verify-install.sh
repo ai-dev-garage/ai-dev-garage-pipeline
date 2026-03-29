@@ -94,17 +94,18 @@ if [ -f "$GARAGE_HOME/agents/define-feature.md" ]; then
 fi
 
 # Second pass: install extensions (manifest records them; update path is covered)
-bash "$SCRIPT_DIR/internal/global-install.sh" --force --ext agile,dev-common 2>&1
+bash "$SCRIPT_DIR/internal/global-install.sh" --force --ext agile,dev-workflow 2>&1
 
 assert_file "$GARAGE_HOME/agents/define-feature.md"
 assert_dir  "$GARAGE_HOME/skills/acceptance-criteria-generation"
 assert_file "$GARAGE_HOME/commands/update-constitution.md"
+assert_file "$GARAGE_HOME/commands/references/dev-workflow/default-constitution-template.md"
 
 # Merge install: user decoy survives update (no top-level wipe)
 echo "${CLR_DIM}Checking custom file survives reinstall...${CLR_RST}"
 DECOY="$GARAGE_HOME/agents/decoy-custom.md"
 echo "# decoy" >"$DECOY"
-bash "$SCRIPT_DIR/internal/global-install.sh" --force --update-mode --ext agile,dev-common 2>&1
+bash "$SCRIPT_DIR/internal/global-install.sh" --force --update-mode --ext agile,dev-workflow 2>&1
 if [ ! -f "$DECOY" ]; then
   echo "${CLR_ERR}FAIL: custom agent file should survive garage update${CLR_RST}" >&2
   FAIL=1
@@ -114,7 +115,7 @@ rm -f "$DECOY"
 # custom: preserved across write-master
 echo "# x" >"$DECOY"
 python3 "$SCRIPT_DIR/internal/manifest.py" custom-add --target "$GARAGE_HOME/manifest.yaml" --category agents --entry decoy-custom.md
-bash "$SCRIPT_DIR/internal/global-install.sh" --force --update-mode --ext agile,dev-common 2>&1
+bash "$SCRIPT_DIR/internal/global-install.sh" --force --update-mode --ext agile,dev-workflow 2>&1
 python3 "$SCRIPT_DIR/internal/manifest.py" custom-list --target "$GARAGE_HOME/manifest.yaml" | grep -q $'agents\tdecoy-custom.md' \
   || { echo "${CLR_ERR}FAIL: manifest custom: not preserved after update${CLR_RST}" >&2; FAIL=1; }
 rm -f "$DECOY"

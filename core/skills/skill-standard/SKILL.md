@@ -31,6 +31,8 @@ Apply these to the target skill’s **SKILL.md** and folder layout:
 3. **Canonical layout** — each skill is a directory with required **`SKILL.md`**. Prefer optional **`scripts/`**, **`references/`**, **`assets/`** as needed (same idea as `.cursor/skills/<name>/` / `.claude/skills/<name>/` in [Cursor docs](https://cursor.com/docs/skills)).
 4. **`references/` vs `assets/`** — use **[references/REFERENCE.md](references/REFERENCE.md)** (“references/ vs assets/”): put material in **`references/`** when the agent must always use it and it affects reasoning, decision order, or output shape; put material in **`assets/`** when it is optional, large, example-heavy, schema/template, or lookup-style.
 5. **No hardcoded install or repo roots** in proposed `SKILL.md` / layout — paths are always relative to **`TARGET_SKILL_DIR`** or **`GARAGE_BUNDLE_ROOT`** from the caller (see REFERENCE.md).
+6. **Secrets and credentials** — The skill must **never** ask the user to paste or type passwords, API tokens, or private keys in chat. Tooling may **read** secrets from the environment or from local files; it must **not solicit** them in conversation. If the skill depends on secrets, **`references/`** must document named **environment variables** and/or a **`.env` file workflow** (gitignored real file, copy from template). Committed templates belong only under **`assets/`** (e.g. `assets/<skill-name>.template.env`). Installed-bundle paths and precedence: **[references/REFERENCE.md](references/REFERENCE.md)** (“Secrets & credentials”).
+7. **Pipeline source boundary** — Skills shipped from the **pipeline** repo under **`core/`** or **`extensions/<id>/`** must not require or hard-depend on **source assets outside** those trees (no other repo, vendor path, or custom bundle as a required link target). **Cross-extension references are unsupported for now:** an extension skill must not require another extension’s skills/agents/rules/commands; it may rely on **core** and **its own** `extensions/<id>/` subtree only. See **[references/REFERENCE.md](references/REFERENCE.md)** (“Pipeline source boundary”). Installed-bundle resolution via caller **`GARAGE_BUNDLE_ROOT`** / **`TARGET_SKILL_DIR`** is fine and is not an out-of-repo *source* dependency.
 
 ## Mode
 
@@ -47,8 +49,9 @@ Apply these to the target skill’s **SKILL.md** and folder layout:
 3. **SKILL.md:** Only operational instructions—steps, when to use, links to `references/*` and `scripts/*`. **No examples block; no multiline scripts.**
 4. **references/:** Content the agent **must** apply when using the skill: reasoning rules, decision order, output shape; see REFERENCE.md for the full **`references/` vs `assets/`** criteria.
 5. **scripts/:** Executable helpers; reference from SKILL.md by relative path only.
-6. **assets/:** Optional, large, example-heavy, schema/template, or lookup files; see REFERENCE.md for when to prefer **`assets/`** over **`references/`**.
+6. **assets/:** Optional, large, example-heavy, schema/template, or lookup files; see REFERENCE.md for when to prefer **`assets/`** over **`references/`**. If the skill needs secrets, add **`assets/<skill-name>.template.env`** (placeholders only) when a template helps; document the real file location in **`references/`** per **Secrets & credentials** in REFERENCE.md.
 7. **Boundary:** Prefer **stateless** skills (input → output); no user prompts inside the skill unless the product docs explicitly allow and you document it. Callers (agents/commands) own flow and persistence.
+8. **No skill-to-skill references** — a skill must not invoke or depend on another skill. If a skill needs data that another skill provides (e.g. config values), declare it as an **Input** and let the calling agent resolve it first. This keeps skills composable and independently testable.
 
 When the **caller** is a **`/ai-dev-garage:create-skill`** or similar command targeting **`GARAGE_BUNDLE_ROOT`** with **`scope=global`** or **`scope=project`**, the command (not this skill) must finish by chaining **`skills/bundle-custom-manifest/SKILL.md`** so **`manifest custom:`** registers the new skill folder name. Skip that for **`extension:<name>`** (repo is source of truth).
 
@@ -73,4 +76,6 @@ For **`global` / `project`** bundles, the **caller command** should end with **b
 4. **Duplication:** No repeated prose across skills; no workflow steps stuck in `references/` (those belong in SKILL.md).
 5. **Bloat:** No option catalogs without decision value.
 6. **Caller paths:** Proposed content does not assume a fixed global/repo path without **`TARGET_SKILL_DIR`** / **`GARAGE_BUNDLE_ROOT`** from the caller.
-7. **Present:** Issues and proposed edits; summarize; do not apply unless the user confirms.
+7. **Secrets:** No solicitation of secrets in chat; if secrets are required, **`references/`** vs **`assets/`** split and install-path conventions match REFERENCE.md (“Secrets & credentials”).
+8. **Pipeline boundary:** For `core/` and `extensions/` source packages, no required references outside **`core/`** + **`extensions/`**; no cross-extension hard dependencies (REFERENCE.md “Pipeline source boundary”).
+9. **Present:** Issues and proposed edits; summarize; do not apply unless the user confirms.

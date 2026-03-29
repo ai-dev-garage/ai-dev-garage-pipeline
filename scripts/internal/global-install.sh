@@ -36,7 +36,7 @@ show_help() {
   echo ""
   echo "${CLR_BOLD}Examples:${CLR_RST}"
   echo "  ${CLR_CMD}garage install${CLR_RST}                           Core only (default)"
-  echo "  ${CLR_CMD}garage install${CLR_RST} ${CLR_OPT}--ext agile,dev-common${CLR_RST}   Core + listed extensions"
+  echo "  ${CLR_CMD}garage install${CLR_RST} ${CLR_OPT}--ext agile,dev-workflow${CLR_RST}   Core + listed extensions"
   echo ""
 }
 
@@ -235,6 +235,15 @@ install_extension() {
     while IFS= read -r -d '' f; do
       copy_file "$f" "$GARAGE_HOME/commands/$(basename "$f")"
     done < <(find "$ext_dir/commands" -maxdepth 1 -type f -name "*.md" -print0 2>/dev/null)
+    if [ -d "$ext_dir/commands/references" ]; then
+      local cref="$GARAGE_HOME/commands/references/$ext_id"
+      mkdir -p "$cref"
+      while IFS= read -r -d '' f; do
+        local rel="${f#$ext_dir/commands/references/}"
+        mkdir -p "$cref/$(dirname "$rel")"
+        cp "$f" "$cref/$rel"
+      done < <(find "$ext_dir/commands/references" -type f -print0 2>/dev/null)
+    fi
   fi
 
   # rules
@@ -383,7 +392,7 @@ echo "${CLR_DIM}  Claude:  $CLAUDE_ROOT/{agents,commands,skills,rules}${CLR_RST}
 if [ "$UPDATE_MODE" -eq 0 ] && [ "${#EXT_LIST[@]}" -eq 0 ]; then
   echo ""
   echo "${CLR_OPT}Next — extensions:${CLR_RST} only ${CLR_CMD}core${CLR_RST} was installed. Add more when you need them:"
-  echo "${CLR_DIM}  ${CLR_CMD}garage install --ext <id>${CLR_DIM}   e.g. ${CLR_CMD}garage install --ext agile${CLR_DIM} or ${CLR_CMD}--ext agile,dev-common${CLR_DIM}"
+  echo "${CLR_DIM}  ${CLR_CMD}garage install --ext <id>${CLR_DIM}   e.g. ${CLR_CMD}garage install --ext agile${CLR_DIM} or ${CLR_CMD}--ext agile,dev-workflow${CLR_DIM}"
   echo "${CLR_DIM}  ${CLR_CMD}garage update${CLR_DIM}            refresh files for core + already-installed extensions"
   echo "${CLR_DIM}  IDs live under ${CLR_CMD}\$AI_DEV_GARAGE/extensions/${CLR_DIM}; see ${CLR_CMD}~/.ai-dev-garage/garage.yaml${CLR_DIM} after install.${CLR_RST}"
 fi

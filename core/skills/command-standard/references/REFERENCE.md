@@ -55,6 +55,19 @@ Thin commands typically: resolve **`PROJECT_ROOT`** (e.g. `project=<path>` or wo
 - Actions: `update-pipeline-asset`, `define-feature`, `create-agent`
 - Workflows: `plan`, `implement` (optional)
 
+## Secrets & credentials
+
+- Commands and the agents they load must **never** ask the user to paste or type passwords, API tokens, private keys, or other secrets in chat.
+- Runtimes may **read** secrets from the **environment** or from **local gitignored** files. For Garage-installed skills, the canonical user file is **`$BUNDLE_ROOT/skills/<skill-name>/<skill-name>.env`** with precedence: env → project bundle → global bundle (unless stated otherwise).
+- Do not outline steps that collect secret values in chat; point users to env vars and documented env files instead.
+
+## Pipeline source boundary (core and extensions)
+
+- Commands under **`core/commands/`** or **`extensions/<id>/commands/`** must not embed required paths or instructions that depend on **source assets outside** the pipeline repo's **`core/`** and **`extensions/`** trees.
+- **Core** commands must not hard-depend on any extension's assets. They may rely on **core** only.
+- **Extension** commands must not hard-depend on **another extension's** palette entries, agents, or skills (cross-extension unsupported for now). They may rely on **core** and their own **`extensions/<id>/`** subtree only.
+- Install-time paths via caller-supplied variables (**`GARAGE_BUNDLE_ROOT`**, **`GARAGE_SEARCH_ROOTS`**, **`TARGET_*`**) are fine.
+
 ## Do not
 
 - Interpret or reformat user input in **thin** commands; pass it to the agent.
@@ -89,3 +102,5 @@ $ARGUMENTS
 - [ ] Thin command does not embed full agent workflow
 - [ ] Paths are **derived from inputs** (`PROJECT_ROOT`, **`GARAGE_SEARCH_ROOTS`**, **`TARGET_*`**) — not a single hardcoded install path
 - [ ] **`create-*` / `update-*` / `review-*` style commands** pass **scope → target path** into the orchestrator when assets are written
+- [ ] **Secrets:** no solicitation in chat; aligns with **Secrets & credentials** above
+- [ ] **Pipeline boundary:** for `core/` / `extensions/` sources, no out-of-tree source deps; no cross-extension hard deps (see **Pipeline source boundary** above)

@@ -29,6 +29,8 @@ Apply to the target command’s **`*.md`**:
 4. **Help:** The outline must document handling **`help`**, **`-h`**, **`--help`** (descriptive notes + usage; do not run the main flow).
 5. **Thin commands:** Only resolve project, load agent, pass **`$ARGUMENTS`** through—no duplicate agent workflow.
 6. **Paths:** Outlines must **derive paths from explicit inputs** (`PROJECT_ROOT`, config path if any, **`GARAGE_SEARCH_ROOTS`** or per-step resolved paths). **No hardcoded** home directory or repo `core/...` strings as the only way to load agents—commands map **scope → bundle root → file path** per REFERENCE.md. (Memory-specific paths remain **out of scope** until memory assets return.)
+7. **Secrets and credentials:** The command and any agent it loads must **never** ask the user to paste passwords, API tokens, or private keys in chat. Use environment variables and/or gitignored local env files per **[references/REFERENCE.md](references/REFERENCE.md)** (“Secrets & credentials”).
+8. **Pipeline source boundary:** Commands authored under pipeline **`core/`** or **`extensions/<id>/`** must not require loading agents/skills from **outside** **`core/`** + **`extensions/`** as source. **Core** commands must not hard-depend on any extension’s assets. **Extension** commands must not hard-depend on **another extension’s** commands/agents/skills (cross-extension unsupported for now). See **[references/REFERENCE.md](references/REFERENCE.md)** (“Pipeline source boundary”).
 
 ## Mode
 
@@ -44,7 +46,8 @@ Apply to the target command’s **`*.md`**:
 2. **Frontmatter:** `name`, `description` (one sentence; “entry only” when delegating).
 3. **Structure:** User input (`$ARGUMENTS`) → numbered outline. **Thin:** (1) Help branch, (2) Resolve target project, (3) Load orchestrator (agent path, assume role, run workflow). **Self-contained:** (0) Help, (1) Resolve project, (2)…(N) full flow.
 4. **`create-*` / `update-*` / `review-*`:** The command must **compute and pass** the target location (e.g. **`TARGET_SKILL_DIR`**, **`TARGET_AGENT_FILE`**, **`GARAGE_BUNDLE_ROOT`**) into the orchestrator prompt or agent inputs. **Global** vs **extension** is resolved here, not inside the standard skills.
-5. **`/ai-dev-garage` create/update/review** targeting **`global` or `project`:** After confirmed disk writes (when applicable), the command outline must chain **`skills/bundle-custom-manifest/SKILL.md`** so **`garage custom add`** keeps **`manifest custom:`** in sync. Omit for **`extension:<name>`**.
+5. **Secrets:** Command outlines must not include steps that collect secrets in chat; loaded agents/skills follow **Secrets & credentials** conventions (no chat solicitation; use env vars and gitignored env files).
+6. **`/ai-dev-garage` create/update/review** targeting **`global` or `project`:** After confirmed disk writes (when applicable), the command outline must chain **`skills/bundle-custom-manifest/SKILL.md`** so **`garage custom add`** keeps **`manifest custom:`** in sync. Omit for **`extension:<name>`**.
 
 ---
 
