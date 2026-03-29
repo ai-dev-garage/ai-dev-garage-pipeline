@@ -36,6 +36,7 @@ Use this skill to **create**, **update**, or **review** a **rule**. Full criteri
 2. **Structure:** Short title; numbered or bullet list of what to do. Single concern; split if mixing topics.
 3. **Format:** `.md` with frontmatter.
 4. **Boundary:** Rule = always-on or context-triggered constraint; no multi-step workflow; no user interaction. Not a skill or agent.
+5. **`global` / `project`:** The **`create-rule`** / **`update-rule`** command registers the rule in **`manifest custom:`** via **bundle-custom-manifest** after writes—not here. **`extension:<name>`** skips that.
 
 ---
 
@@ -44,6 +45,7 @@ Use this skill to **create**, **update**, or **review** a **rule**. Full criteri
 1. Read the rule file and **references/REFERENCE.md**.
 2. Re-run mandatory checks; fix single-concern violations or format issues.
 3. Present edits; do not apply unless the user confirms.
+4. After applied writes to **`global` / `project`**, the caller uses **bundle-custom-manifest** for the rule basename.
 
 ---
 

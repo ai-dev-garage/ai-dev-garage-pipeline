@@ -14,6 +14,8 @@
 #   garage unlock  <core|ext-name> [--project <path>]
 #   garage export  <source-path>   [--project <path>] [--force]
 #   garage status  [--project <path>]
+#   garage custom  add|remove|list ...
+#   garage doctor  [--project <path>] [--strict] [--fix]
 #
 set -euo pipefail
 
@@ -72,6 +74,8 @@ show_help() {
   echo "  ${CLR_CMD}unlock${CLR_RST}    Unlock a previously locked component"
   echo "  ${CLR_CMD}export${CLR_RST}    Import 3rd-party AI configs into garage"
   echo "  ${CLR_CMD}status${CLR_RST}    Show installed components, versions, and lock state"
+  echo "  ${CLR_CMD}custom${CLR_RST}    Register or list user-owned assets in manifest (custom:)"
+  echo "  ${CLR_CMD}doctor${CLR_RST}    Compare disk vs pipeline + custom; optional cleanup"
   echo ""
   echo "${CLR_DIM}Run ${CLR_CMD}garage${CLR_RST} ${CLR_OPT}<command> --help${CLR_RST}${CLR_DIM} for details on a specific command.${CLR_RST}"
   echo ""
@@ -289,6 +293,23 @@ case "$cmd" in
     fi
     show_banner
     cmd_status "$@"
+    ;;
+
+  custom)
+    if garage_args_contain_help "$@"; then
+      exec bash "$INTERNAL/garage-custom.sh" -h
+    fi
+    show_banner
+    [ $# -gt 0 ] || { echo "${CLR_ERR}Error: garage custom add|remove|list ...${CLR_RST}" >&2; exit 1; }
+    exec bash "$INTERNAL/garage-custom.sh" "$@"
+    ;;
+
+  doctor)
+    if garage_args_contain_help "$@"; then
+      exec bash "$INTERNAL/garage-doctor.sh" -h
+    fi
+    show_banner
+    exec bash "$INTERNAL/garage-doctor.sh" "$@"
     ;;
 
   *)

@@ -14,6 +14,8 @@ Describes a bundle component (core or extension) in the pipeline repo.
 | `version` | string | Semver string (e.g. `1.0.0`). Read at install/update time to populate the master manifest. |
 | `description` | string | One-line summary for humans and AI agents. |
 
+**Version bumps are manual.** When you change shipped assets or behavior in **core** or an **extension**, edit that component’s `manifest.yaml` and increment `version` so `garage update` records the new value in the master manifest. Install scripts do not infer versions from git or file hashes. In-repo helper: **`skills/pipeline-manifest-version/SKILL.md`**.
+
 ### Example
 
 ```yaml
@@ -39,6 +41,21 @@ Written by `garage install` / `garage update`. Tracks what is installed and at w
 | `core.locked` | bool | If `true`, `garage update` will not overwrite core assets. |
 | `extensions.<name>.version` | string | Installed version of the extension. |
 | `extensions.<name>.locked` | bool | If `true`, `garage update` will not overwrite this extension's assets. |
+| `custom` | object | Optional. User-declared assets **not** from core or extensions; preserved when the master manifest is rewritten (`write-master`). Used by **`garage doctor`** and optional tooling. |
+
+### `custom` shape
+
+Each key is a category; values are **lists of strings** (basenames for flat categories; for **skills**, the **top-level folder name** only).
+
+| Key | Meaning |
+|-----|---------|
+| `agents` | Agent filenames (e.g. `my-agent.md`). |
+| `commands` | Command filenames (e.g. `my-command.md` or `ai-dev-garage/foo.md`). |
+| `skills` | Skill **directory** names under `skills/` (not nested paths). |
+| `rules` | Rule filenames (`.md` or `.mdc`). |
+| `memory` | Memory filenames. |
+
+Populate with **`garage custom add --category … --entry …`** (or **`--project <path>`** for project bundles). **`garage custom list`** / **`remove`** round out the flow.
 
 ### Example
 
@@ -58,6 +75,13 @@ extensions:
   dev-common:
     version: "1.0.0"
     locked: true
+
+custom:
+  agents: []
+  commands: []
+  skills: []
+  rules: []
+  memory: []
 ```
 
 ### Lock behaviour

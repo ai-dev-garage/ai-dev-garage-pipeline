@@ -23,3 +23,5 @@ $ARGUMENTS
 4. Resolve the **agent-standard** skill by walking `GARAGE_SEARCH_ROOTS` in order; load the first match at `skills/agent-standard/SKILL.md`.
 
 5. Apply the skill in **create** mode with: user input as description, `TARGET_AGENT_FILE`, `GARAGE_BUNDLE_ROOT`, `ASSET_SCOPE`. Output the proposed agent content. Do not write files until the user confirms.
+
+6. If `scope` is `global` or `project` and the user confirmed writes: set `MANIFEST_PATH` = `$GARAGE_BUNDLE_ROOT/manifest.yaml`. Load **bundle-custom-manifest** (`skills/bundle-custom-manifest/SKILL.md` via `GARAGE_SEARCH_ROOTS`) with `ACTION=add`, `CUSTOM_CATEGORY=agents`, `CUSTOM_ENTRY` = basename of `TARGET_AGENT_FILE`. Output the exact `garage custom add` line (and `--project` when applicable). If `scope` is `extension:<name>`, skip master-manifest registration.

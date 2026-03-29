@@ -23,3 +23,5 @@ $ARGUMENTS
 4. Resolve the **command-standard** skill by walking `GARAGE_SEARCH_ROOTS` in order; load the first match at `skills/command-standard/SKILL.md`.
 
 5. Apply the skill in **create** mode with: user input as description, `TARGET_COMMAND_FILE`, `GARAGE_BUNDLE_ROOT`, `ASSET_SCOPE`. Output the proposed command content. Do not write files until the user confirms.
+
+6. If `scope` is `global` or `project` and the user confirmed writes: **bundle-custom-manifest** with `CUSTOM_CATEGORY=commands`, `CUSTOM_ENTRY` = `ai-dev-garage/<basename>` if `TARGET_COMMAND_FILE` is under `.../commands/ai-dev-garage/`, else basename only. Output `garage custom add ...`. Skip for `extension:<name>`.

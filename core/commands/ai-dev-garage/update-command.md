@@ -23,3 +23,5 @@ $ARGUMENTS
 4. Resolve the **command-standard** skill by walking `GARAGE_SEARCH_ROOTS` in order; load the first match at `skills/command-standard/SKILL.md`.
 
 5. Apply the skill in **update** mode with: user input as change description, `TARGET_COMMAND_FILE`, `GARAGE_BUNDLE_ROOT`, `ASSET_SCOPE`. Output the proposed updated content. Do not write files until the user confirms.
+
+6. If `scope` is `global` or `project` and changes were applied: **bundle-custom-manifest** for `commands` (flat basename vs `ai-dev-garage/...` like create-command). Skip for `extension:<name>`.

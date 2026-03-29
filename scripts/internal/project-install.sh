@@ -219,37 +219,35 @@ install_extension() {
     return 0
   fi
 
-  local prefix
-  if ! prefix="$(python3 "$MANIFEST_PY" get-prefix --pipeline-root "$PIPELINE_ROOT" --ext-id "$ext_id" 2>/dev/null)"; then
-    echo "${CLR_WARN}  Warning: skip extension '$ext_id' (invalid manifest.yaml)${CLR_RST}" >&2
+  if [ ! -f "$ext_dir/manifest.yaml" ]; then
+    echo "${CLR_WARN}  Warning: skip extension '$ext_id' (no manifest.yaml)${CLR_RST}" >&2
     return 0
   fi
-  [ -n "$prefix" ] || return 0
 
   echo "${CLR_DIM}Installing extension ${CLR_OPT}$ext_id${CLR_DIM} into project...${CLR_RST}"
 
   if [ -d "$ext_dir/agents" ]; then
     for f in "$ext_dir/agents"/*.md; do
       [ -f "$f" ] || continue
-      copy_file "$f" "$GARAGE_PROJ/agents/${prefix}-$(basename "$f")"
+      copy_file "$f" "$GARAGE_PROJ/agents/$(basename "$f")"
     done
   fi
 
   if [ -d "$ext_dir/commands" ]; then
     while IFS= read -r -d '' f; do
-      copy_file "$f" "$GARAGE_PROJ/commands/${prefix}-$(basename "$f")"
+      copy_file "$f" "$GARAGE_PROJ/commands/$(basename "$f")"
     done < <(find "$ext_dir/commands" -maxdepth 1 -type f -name "*.md" -print0 2>/dev/null)
   fi
 
   if [ -d "$ext_dir/rules" ]; then
     while IFS= read -r -d '' f; do
-      copy_file "$f" "$GARAGE_PROJ/rules/${prefix}-$(basename "$f")"
+      copy_file "$f" "$GARAGE_PROJ/rules/$(basename "$f")"
     done < <(find "$ext_dir/rules" -maxdepth 1 -type f \( -name "*.md" -o -name "*.mdc" \) -print0 2>/dev/null)
   fi
 
   if [ -d "$ext_dir/memory" ]; then
     while IFS= read -r -d '' f; do
-      copy_file "$f" "$GARAGE_PROJ/memory/${prefix}-$(basename "$f")"
+      copy_file "$f" "$GARAGE_PROJ/memory/$(basename "$f")"
     done < <(find "$ext_dir/memory" -maxdepth 1 -type f -name "*.md" -print0 2>/dev/null)
   fi
 
@@ -258,14 +256,14 @@ install_extension() {
       [ -d "$d" ] || continue
       local skill_base
       skill_base="$(basename "$d")"
-      local dest="$GARAGE_PROJ/skills/${prefix}-${skill_base}"
+      local dest="$GARAGE_PROJ/skills/$skill_base"
       mkdir -p "$dest"
       while IFS= read -r -d '' f; do
         local rel="${f#$d/}"
         mkdir -p "$dest/$(dirname "$rel")"
         cp "$f" "$dest/$rel"
       done < <(find "$d" -type f -print0 2>/dev/null)
-      echo "${CLR_CMD}  + skills/${prefix}-${skill_base}/${CLR_RST}"
+      echo "${CLR_CMD}  + skills/$skill_base/${CLR_RST}"
     done
   fi
 
@@ -282,7 +280,8 @@ if [ -n "$EXT_FILTER" ]; then
   IFS=',' read -r -a EXT_LIST <<< "$EXT_FILTER"
 fi
 
-for ext_id in "${EXT_LIST[@]}"; do
+for (( _j=0; _j<${#EXT_LIST[@]}; _j++ )); do
+  ext_id="${EXT_LIST[_j]}"
   [ -n "$ext_id" ] || continue
   install_extension "$ext_id"
 done

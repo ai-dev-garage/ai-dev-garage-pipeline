@@ -23,3 +23,5 @@ $ARGUMENTS
 4. Resolve the **skill-standard** skill by walking `GARAGE_SEARCH_ROOTS` in order; load the first match at `skills/skill-standard/SKILL.md`.
 
 5. Apply the skill in **review** mode with: `TARGET_SKILL_DIR`, `GARAGE_BUNDLE_ROOT`, `ASSET_SCOPE`. Output issues and proposed fixes. Do not apply changes until the user confirms.
+
+6. If the user **applies** edits for `global` or `project`, finish with **bundle-custom-manifest** (`skills`, folder basename). Skip if no writes or `extension:<name>`.

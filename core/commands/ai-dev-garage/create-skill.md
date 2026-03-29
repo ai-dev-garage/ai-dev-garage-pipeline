@@ -23,3 +23,5 @@ $ARGUMENTS
 4. Resolve the **skill-standard** skill by walking `GARAGE_SEARCH_ROOTS` in order; load the first match at `skills/skill-standard/SKILL.md`.
 
 5. Apply the skill in **create** mode with: user input as description, `TARGET_SKILL_DIR`, `GARAGE_BUNDLE_ROOT`, `ASSET_SCOPE`. Output the proposed skill layout and content. Do not write files until the user confirms.
+
+6. If `scope` is `global` or `project` and the user confirmed writes: `MANIFEST_PATH` = `$GARAGE_BUNDLE_ROOT/manifest.yaml`. Load **bundle-custom-manifest** with `ACTION=add`, `CUSTOM_CATEGORY=skills`, `CUSTOM_ENTRY` = basename of `TARGET_SKILL_DIR` (folder name only). Output `garage custom add ...`. Skip master-manifest registration for `extension:<name>`.

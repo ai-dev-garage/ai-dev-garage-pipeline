@@ -44,6 +44,7 @@ Apply to the target command’s **`*.md`**:
 2. **Frontmatter:** `name`, `description` (one sentence; “entry only” when delegating).
 3. **Structure:** User input (`$ARGUMENTS`) → numbered outline. **Thin:** (1) Help branch, (2) Resolve target project, (3) Load orchestrator (agent path, assume role, run workflow). **Self-contained:** (0) Help, (1) Resolve project, (2)…(N) full flow.
 4. **`create-*` / `update-*` / `review-*`:** The command must **compute and pass** the target location (e.g. **`TARGET_SKILL_DIR`**, **`TARGET_AGENT_FILE`**, **`GARAGE_BUNDLE_ROOT`**) into the orchestrator prompt or agent inputs. **Global** vs **extension** is resolved here, not inside the standard skills.
+5. **`/ai-dev-garage` create/update/review** targeting **`global` or `project`:** After confirmed disk writes (when applicable), the command outline must chain **`skills/bundle-custom-manifest/SKILL.md`** so **`garage custom add`** keeps **`manifest custom:`** in sync. Omit for **`extension:<name>`**.
 
 ---
 

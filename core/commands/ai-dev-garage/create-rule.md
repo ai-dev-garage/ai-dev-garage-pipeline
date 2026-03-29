@@ -23,3 +23,5 @@ $ARGUMENTS
 4. Resolve the **rule-standard** skill by walking `GARAGE_SEARCH_ROOTS` in order; load the first match at `skills/rule-standard/SKILL.md`.
 
 5. Apply the skill in **create** mode with: user input as description, `TARGET_RULE_FILE`, `GARAGE_BUNDLE_ROOT`, `ASSET_SCOPE`. Output the proposed rule content. Do not write files until the user confirms.
+
+6. If `scope` is `global` or `project` and the user confirmed writes: **bundle-custom-manifest** with `CUSTOM_CATEGORY=rules`, `CUSTOM_ENTRY` = basename of `TARGET_RULE_FILE`. Skip for `extension:<name>`.

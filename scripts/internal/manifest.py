@@ -17,10 +17,15 @@ Usage:
   manifest.py unlock           --target <manifest.yaml> <core|ext-name>
   manifest.py read-status      --target <manifest.yaml>
   manifest.py list-installed-extensions --target <manifest.yaml>
+  manifest.py custom-add       --target <manifest.yaml> --category <cat> --entry <name>
+  manifest.py custom-remove    --target <manifest.yaml> --category <cat> --entry <name>
+  manifest.py custom-list      --target <manifest.yaml>
+  manifest.py doctor-check     --target <manifest.yaml> [--pipeline-root <path>]
 """
 
 import sys
 import os
+import glob
 import argparse
 from datetime import datetime, timezone
 
@@ -50,6 +55,154 @@ def save_yaml(path, data):
 
 def now_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+CUSTOM_CATEGORIES = ("agents", "commands", "rules", "memory", "skills")
+
+
+def _normalize_custom_block(raw):
+    """Return a clean custom: dict with list values, or None if empty."""
+    if not isinstance(raw, dict):
+        return None
+    out = {}
+    for cat in CUSTOM_CATEGORIES:
+        v = raw.get(cat)
+        if not v:
+            continue
+        if isinstance(v, str):
+            items = [v]
+        elif isinstance(v, list):
+            items = v
+        else:
+            continue
+        cleaned = []
+        for x in items:
+            if isinstance(x, str) and x.strip():
+                cleaned.append(x.strip())
+        if cleaned:
+            out[cat] = cleaned
+    return out if out else None
+
+
+def _bundle_root_from_manifest_path(target):
+    return os.path.dirname(os.path.abspath(target))
+
+
+def _expected_asset_sets(pipeline_root, ext_ids):
+    """Return dict category -> set of expected keys (basename or commands subpath)."""
+    exp = {c: set() for c in CUSTOM_CATEGORIES}
+
+    def add_core():
+        core = os.path.join(pipeline_root, "core")
+        for f in glob.glob(os.path.join(core, "agents", "*.md")):
+            if os.path.isfile(f):
+                exp["agents"].add(os.path.basename(f))
+        for f in glob.glob(os.path.join(core, "rules", "*")):
+            if os.path.isfile(f) and f.endswith((".md", ".mdc")):
+                exp["rules"].add(os.path.basename(f))
+        for f in glob.glob(os.path.join(core, "memory", "*.md")):
+            if os.path.isfile(f):
+                exp["memory"].add(os.path.basename(f))
+        cdir = os.path.join(core, "commands")
+        if os.path.isdir(cdir):
+            for f in glob.glob(os.path.join(cdir, "*.md")):
+                if os.path.isfile(f):
+                    exp["commands"].add(os.path.basename(f))
+            adg = os.path.join(cdir, "ai-dev-garage")
+            if os.path.isdir(adg):
+                for f in glob.glob(os.path.join(adg, "*.md")):
+                    if os.path.isfile(f):
+                        exp["commands"].add("ai-dev-garage/" + os.path.basename(f))
+        sk = os.path.join(core, "skills")
+        if os.path.isdir(sk):
+            for name in os.listdir(sk):
+                p = os.path.join(sk, name)
+                if os.path.isdir(p):
+                    exp["skills"].add(name)
+
+    def add_extension(ext_id):
+        ext = os.path.join(pipeline_root, "extensions", ext_id)
+        if not os.path.isdir(ext):
+            return
+        for f in glob.glob(os.path.join(ext, "agents", "*.md")):
+            if os.path.isfile(f):
+                exp["agents"].add(os.path.basename(f))
+        for f in glob.glob(os.path.join(ext, "rules", "*")):
+            if os.path.isfile(f) and f.endswith((".md", ".mdc")):
+                exp["rules"].add(os.path.basename(f))
+        for f in glob.glob(os.path.join(ext, "memory", "*.md")):
+            if os.path.isfile(f):
+                exp["memory"].add(os.path.basename(f))
+        cdir = os.path.join(ext, "commands")
+        if os.path.isdir(cdir):
+            for f in glob.glob(os.path.join(cdir, "*.md")):
+                if os.path.isfile(f):
+                    exp["commands"].add(os.path.basename(f))
+        sk = os.path.join(ext, "skills")
+        if os.path.isdir(sk):
+            for name in os.listdir(sk):
+                p = os.path.join(sk, name)
+                if os.path.isdir(p):
+                    exp["skills"].add(name)
+
+    add_core()
+    for eid in ext_ids:
+        add_extension(eid)
+    return exp
+
+
+def _disk_asset_sets(bundle_root):
+    """Scan runtime bundle on disk."""
+    disk = {c: set() for c in CUSTOM_CATEGORIES}
+    if not os.path.isdir(bundle_root):
+        return disk
+
+    agents = os.path.join(bundle_root, "agents")
+    if os.path.isdir(agents):
+        for f in glob.glob(os.path.join(agents, "*.md")):
+            if os.path.isfile(f):
+                disk["agents"].add(os.path.basename(f))
+
+    rules = os.path.join(bundle_root, "rules")
+    if os.path.isdir(rules):
+        for f in glob.glob(os.path.join(rules, "*")):
+            if os.path.isfile(f) and f.endswith((".md", ".mdc")):
+                disk["rules"].add(os.path.basename(f))
+
+    mem = os.path.join(bundle_root, "memory")
+    if os.path.isdir(mem):
+        for f in glob.glob(os.path.join(mem, "*.md")):
+            if os.path.isfile(f):
+                disk["memory"].add(os.path.basename(f))
+
+    cdir = os.path.join(bundle_root, "commands")
+    if os.path.isdir(cdir):
+        for f in glob.glob(os.path.join(cdir, "*.md")):
+            if os.path.isfile(f):
+                disk["commands"].add(os.path.basename(f))
+        adg = os.path.join(cdir, "ai-dev-garage")
+        if os.path.isdir(adg):
+            for f in glob.glob(os.path.join(adg, "*.md")):
+                if os.path.isfile(f):
+                    disk["commands"].add("ai-dev-garage/" + os.path.basename(f))
+
+    sk = os.path.join(bundle_root, "skills")
+    if os.path.isdir(sk):
+        for name in os.listdir(sk):
+            p = os.path.join(sk, name)
+            if os.path.isdir(p):
+                disk["skills"].add(name)
+
+    return disk
+
+
+def _custom_sets(custom_block):
+    sets = {c: set() for c in CUSTOM_CATEGORIES}
+    block = _normalize_custom_block(custom_block) or {}
+    for cat in CUSTOM_CATEGORIES:
+        for x in block.get(cat) or []:
+            sets[cat].add(x)
+    return sets
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +308,10 @@ def cmd_write_master(args):
     if ext_data:
         data["extensions"] = ext_data
 
+    preserved = _normalize_custom_block(existing.get("custom"))
+    if preserved:
+        data["custom"] = preserved
+
     save_yaml(target, data)
 
 
@@ -230,6 +387,128 @@ def cmd_read_status(args):
         print(f"{name}\t{version}\t{locked}")
 
 
+def cmd_custom_add(args):
+    if args.category not in CUSTOM_CATEGORIES:
+        print(f"Error: category must be one of: {', '.join(CUSTOM_CATEGORIES)}", file=sys.stderr)
+        sys.exit(1)
+    bundle = _bundle_root_from_manifest_path(args.target)
+    entry = args.entry.strip()
+    if not entry:
+        print("Error: --entry is required.", file=sys.stderr)
+        sys.exit(1)
+
+    if args.category == "skills":
+        path = os.path.join(bundle, "skills", entry)
+        if not os.path.isdir(path):
+            print(f"Error: skill directory not found: {path}", file=sys.stderr)
+            sys.exit(1)
+    elif args.category == "commands":
+        if "/" in entry:
+            sub, _, base = entry.partition("/")
+            if sub != "ai-dev-garage" or "/" in base:
+                print("Error: commands entry must be basename.md or ai-dev-garage/basename.md", file=sys.stderr)
+                sys.exit(1)
+            path = os.path.join(bundle, "commands", sub, base)
+        else:
+            path = os.path.join(bundle, "commands", entry)
+        if not os.path.isfile(path):
+            print(f"Error: command file not found: {path}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        path = os.path.join(bundle, args.category, entry)
+        if not os.path.isfile(path):
+            print(f"Error: file not found: {path}", file=sys.stderr)
+            sys.exit(1)
+
+    data = load_yaml(args.target) if os.path.isfile(args.target) else {}
+    custom = dict(data.get("custom") or {})
+    lst = list(custom.get(args.category) or [])
+    if entry not in lst:
+        lst.append(entry)
+        custom[args.category] = lst
+    norm = _normalize_custom_block(custom)
+    if norm:
+        data["custom"] = norm
+    save_yaml(args.target, data)
+    print(f"Registered custom {args.category}: {entry}")
+
+
+def cmd_custom_remove(args):
+    if args.category not in CUSTOM_CATEGORIES:
+        print(f"Error: category must be one of: {', '.join(CUSTOM_CATEGORIES)}", file=sys.stderr)
+        sys.exit(1)
+    if not os.path.isfile(args.target):
+        print(f"Error: manifest not found: {args.target}", file=sys.stderr)
+        sys.exit(1)
+    entry = args.entry.strip()
+    data = load_yaml(args.target)
+    custom = dict(data.get("custom") or {})
+    lst = [x for x in (custom.get(args.category) or []) if x != entry]
+    if lst:
+        custom[args.category] = lst
+    else:
+        custom.pop(args.category, None)
+    norm = _normalize_custom_block(custom)
+    if norm:
+        data["custom"] = norm
+    else:
+        data.pop("custom", None)
+    save_yaml(args.target, data)
+    print(f"Removed custom {args.category}: {entry}")
+
+
+def cmd_custom_list(args):
+    if not os.path.isfile(args.target):
+        print(f"Error: manifest not found: {args.target}", file=sys.stderr)
+        sys.exit(1)
+    data = load_yaml(args.target)
+    norm = _normalize_custom_block(data.get("custom"))
+    if not norm:
+        print("(no custom entries)")
+        return
+    for cat in CUSTOM_CATEGORIES:
+        for x in norm.get(cat) or []:
+            print(f"{cat}\t{x}")
+
+
+def cmd_doctor_check(args):
+    if not os.path.isfile(args.target):
+        print(f"Error: manifest not found: {args.target}", file=sys.stderr)
+        sys.exit(1)
+    data = load_yaml(args.target)
+    pipeline_root = args.pipeline_root or data.get("pipeline_repo") or ""
+    pipeline_root = os.path.abspath(os.path.expanduser(pipeline_root))
+    if not os.path.isdir(pipeline_root):
+        print(f"Error: pipeline root not found: {pipeline_root}", file=sys.stderr)
+        sys.exit(1)
+
+    ext_ids = sorted((data.get("extensions") or {}).keys())
+    expected = _expected_asset_sets(pipeline_root, ext_ids)
+    bundle = _bundle_root_from_manifest_path(args.target)
+    disk = _disk_asset_sets(bundle)
+    custom_s = _custom_sets(data.get("custom"))
+
+    untracked_count = 0
+    for cat in CUSTOM_CATEGORIES:
+        exp = expected[cat]
+        dsk = disk[cat]
+        cust = custom_s[cat]
+        untracked = dsk - exp - cust
+        for u in sorted(untracked):
+            print(f"UNTRACKED\t{cat}\t{u}")
+            untracked_count += 1
+        missing_c = cust - dsk
+        for m in sorted(missing_c):
+            print(f"CUSTOM_MISSING\t{cat}\t{m}")
+        missing_e = exp - dsk
+        for m in sorted(missing_e):
+            print(f"MISSING_EXPECTED\t{cat}\t{m}")
+
+    if untracked_count == 0:
+        print("OK\tno untracked paths (see other lines for missing/custom issues)")
+    sys.exit(1 if getattr(args, "strict", False) and untracked_count > 0 else 0)
+
+
 # ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
@@ -287,6 +566,28 @@ def main():
     p = sub.add_parser("read-status", help="Print human-readable status from master manifest")
     p.add_argument("--target", required=True)
 
+    # custom-add
+    p = sub.add_parser("custom-add", help="Append an entry to manifest custom: (validates path on disk)")
+    p.add_argument("--target", required=True)
+    p.add_argument("--category", required=True, choices=list(CUSTOM_CATEGORIES))
+    p.add_argument("--entry", required=True)
+
+    # custom-remove
+    p = sub.add_parser("custom-remove", help="Remove an entry from manifest custom:")
+    p.add_argument("--target", required=True)
+    p.add_argument("--category", required=True, choices=list(CUSTOM_CATEGORIES))
+    p.add_argument("--entry", required=True)
+
+    # custom-list
+    p = sub.add_parser("custom-list", help="Print custom entries as category<TAB>entry")
+    p.add_argument("--target", required=True)
+
+    # doctor-check
+    p = sub.add_parser("doctor-check", help="Compare disk vs pipeline-expected and custom lists")
+    p.add_argument("--target", required=True)
+    p.add_argument("--pipeline-root", default="", help="Override pipeline repo (default: manifest pipeline_repo)")
+    p.add_argument("--strict", action="store_true", help="Exit 1 if any UNTRACKED paths")
+
     args = parser.parse_args()
 
     dispatch = {
@@ -299,6 +600,10 @@ def main():
         "lock":            cmd_lock,
         "unlock":          cmd_unlock,
         "read-status":     cmd_read_status,
+        "custom-add":      cmd_custom_add,
+        "custom-remove":   cmd_custom_remove,
+        "custom-list":     cmd_custom_list,
+        "doctor-check":    cmd_doctor_check,
     }
     dispatch[args.command](args)
 
