@@ -50,6 +50,8 @@ Apply these to the target skill’s **SKILL.md** and folder layout:
 6. **assets/:** Optional, large, example-heavy, schema/template, or lookup files; see REFERENCE.md for when to prefer **`assets/`** over **`references/`**.
 7. **Boundary:** Prefer **stateless** skills (input → output); no user prompts inside the skill unless the product docs explicitly allow and you document it. Callers (agents/commands) own flow and persistence.
 
+When the **caller** is a **`/ai-dev-garage:create-skill`** or similar command targeting **`GARAGE_BUNDLE_ROOT`** with **`scope=global`** or **`scope=project`**, the command (not this skill) must finish by chaining **`skills/bundle-custom-manifest/SKILL.md`** so **`manifest custom:`** registers the new skill folder name. Skip that for **`extension:<name>`** (repo is source of truth).
+
 ---
 
 ## Update flow
@@ -58,6 +60,8 @@ Apply these to the target skill’s **SKILL.md** and folder layout:
 2. Re-apply **Mandatory checks**. Move any examples or long scripts out of SKILL.md into `references/`, `assets/`, or `scripts/` per **references/ vs assets/** in REFERENCE.md.
 3. Align frontmatter with REFERENCE.md (Garage + Cursor + Claude compatibility notes).
 4. Present edits; do not apply unless the user confirms.
+
+For **`global` / `project`** bundles, the **caller command** should end with **bundle-custom-manifest** after applied writes (see that skill). **`extension:<name>`** skips master-manifest registration.
 
 ---
 

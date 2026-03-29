@@ -23,3 +23,5 @@ $ARGUMENTS
 4. Resolve the **agent-standard** skill by walking `GARAGE_SEARCH_ROOTS` in order; load the first match at `skills/agent-standard/SKILL.md`.
 
 5. Apply the skill in **update** mode with: user input as change description, `TARGET_AGENT_FILE`, `GARAGE_BUNDLE_ROOT`, `ASSET_SCOPE`. Output the proposed updated content. Do not write files until the user confirms.
+
+6. If `scope` is `global` or `project` and the user applied updates to disk: **bundle-custom-manifest** with `CUSTOM_CATEGORY=agents`, `CUSTOM_ENTRY` = basename of `TARGET_AGENT_FILE` (**add**, idempotent). If the basename changed, remove old + add new per that skill’s REFERENCE. Skip for `extension:<name>`.

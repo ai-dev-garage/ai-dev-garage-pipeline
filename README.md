@@ -91,9 +91,9 @@ Restart Cursor / Claude Code so they pick up the new paths.
 
 ## Install vs update vs adding extensions
 
-- **`garage install` (global)** — Copies **core** into `~/.ai-dev-garage` by default. Extensions are **not** taken from `garage.yaml` automatically; you pass them explicitly, e.g. `garage install --ext agile` or `garage install --ext agile,dev-common`. The master manifest (`~/.ai-dev-garage/manifest.yaml`) lists which extension IDs are installed.
+- **`garage install` (global)** — **Merges** **core** into `~/.ai-dev-garage` (overwrites pipeline-managed files; does **not** delete your whole runtime tree). Extensions are **not** taken from `garage.yaml` automatically; you pass them explicitly, e.g. `garage install --ext agile` or `garage install --ext agile,dev-common`. The master manifest (`~/.ai-dev-garage/manifest.yaml`) lists which extension IDs are installed.
 
-- **`garage update` (global)** — Re-copies **core** and **only extensions that are already listed** in that master manifest (skips locked components). It does **not** install new extension IDs you never asked for. If you see `agile` / `dev-common` during update, they were already recorded from a previous `garage install --ext ...`.
+- **`garage update` (global)** — Re-merges **core** and **only extensions that are already listed** in that master manifest (skips locked components). It does **not** install new extension IDs you never asked for. If you see `agile` / `dev-common` during update, they were already recorded from a previous `garage install --ext ...`.
 
 - **Adding another extension later** — Run `garage install --ext <newid>` (or comma-separated list). Existing manifest rows for other extensions are **preserved**; the new ID is merged in and its files are copied.
 
@@ -117,7 +117,28 @@ Creates `project/.ai-dev-garage/` and symlinks `project/.cursor` / `project/.cla
 
 - Add `extensions/<id>/manifest.yaml` and assets under this repo.
 - Optional: document the ID under `garage.yaml` (catalog hints; does not auto-install).
-- Users install with `garage install --ext <id>`. Installed files are **flat** with `<name>-` prefixes for extension assets.
+- Users install with `garage install --ext <id>`. Extension assets are copied **without** filename prefixes; **names must be unique** across core and all installed extensions (install fails on duplicate basenames or skill folder names).
+
+### Component versions (semver)
+
+`garage install` / `garage update` read each component’s **`version`** from **`core/manifest.yaml`** and **`extensions/<id>/manifest.yaml`** and write those strings into the **master** manifest (`~/.ai-dev-garage/manifest.yaml`). Nothing auto-bumps versions when you change files in the repo.
+
+**Pipeline authors should bump `version` when you ship meaningful changes** (same semver habits as libraries: patch for fixes, minor for additive or behavior-compatible changes, major for breaking removals or renames). If you skip the bump, users’ master manifest—and support questions—will still show the old version even after `garage update`.
+
+**Core and each extension are independent:** bump **`core/manifest.yaml`** only for edits under **`core/`**; bump **`extensions/<id>/manifest.yaml`** only when **that** extension’s shipped assets or contract change. A **core** release does **not** require bumping extension versions unless you actually modified those extensions (installer behavior can change what lands on disk without any change to extension source files).
+
+Maintainers load **`skills/pipeline-manifest-version/SKILL.md`** (same pattern as other standards: skill is the source of truth) to walk editing **`core/manifest.yaml`** or **`extensions/<id>/manifest.yaml`** and to run **`garage update`** so **`~/.ai-dev-garage/manifest.yaml`** matches. It does **not** auto-detect git diffs; you still choose **patch / minor / major** (or an explicit version).
+
+### After install-layout changes (e.g. unprefixed extensions)
+
+**UNTRACKED** lines from **`garage doctor`** refer to paths under the **runtime** (`~/.ai-dev-garage/...` or a project `.ai-dev-garage/...`), not “missing” from the git pipeline tree. Old filenames (e.g. prefixed copies from a prior installer) are left on disk because updates **merge/overwrite** but do not delete unknown files.
+
+**What to do with UNTRACKED:** (1) Run **`garage update`** so expected unprefixed files exist. (2) Open **`garage doctor`** again — if only legacy extras remain, run **`garage doctor --fix`** and confirm prompts to delete **UNTRACKED** paths, or delete those files yourself under **`agents/`**, **`commands/`**, **`skills/`**. Do **not** use **`--fix`** if you still rely on those files as your only copy.
+
+## Custom assets and doctor
+
+- **`garage custom add|remove|list`** — Register user-owned files or skill folders under **`manifest.yaml` → `custom:`** so installs and **`garage doctor`** know they are intentional. Use **`--project <path>`** for a project bundle.
+- **`garage doctor`** — Compares expected pipeline output (core ∪ extensions) plus **`custom:`** against files on disk; reports **UNTRACKED**, **CUSTOM_MISSING**, **MISSING_EXPECTED**. **`--fix`** interactively removes **untracked** files only.
 
 See [docs/manifest-yaml.schema.md](docs/manifest-yaml.schema.md) and [docs/garage-yaml.schema.md](docs/garage-yaml.schema.md).
 

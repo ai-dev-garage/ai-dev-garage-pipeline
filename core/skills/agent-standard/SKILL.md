@@ -46,6 +46,7 @@ Apply to the target agent’s **`*.md`** file:
 2. **Frontmatter:** Fill required and recommended fields per REFERENCE.md; declare **`skills`** as the authoritative list of skill dependencies.
 3. **Body:** Role → **Workflow** (numbered steps: Goal, Action, Output) → **Rules** (gates, persistence, resolution). Subagents add **When invoked**.
 4. **Rules:** Review gate, “do not persist until confirm” when applicable, **skill/agent search order over the bundle roots the command provides** (document variable names, not literal paths).
+5. **Caller follow-up:** For **`global` / `project`** targets, the **`create-agent`** command ends with **bundle-custom-manifest** (**`skills/bundle-custom-manifest/SKILL.md`**) after writes—not inside this skill. **`extension:<name>`** skips master-manifest registration.
 
 ---
 
@@ -55,6 +56,7 @@ Apply to the target agent’s **`*.md`** file:
 2. Re-run **Mandatory checks**; move examples out; add missing frontmatter keys where appropriate.
 3. Align path wording with **parameterized bundle roots** from the caller.
 4. Present edits; do not apply unless the user confirms.
+5. **`update-agent` / `review-agent` (after applied writes):** same **bundle-custom-manifest** chain for **`global` / `project`** per that skill.
 
 ---
 
