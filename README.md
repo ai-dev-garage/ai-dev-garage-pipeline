@@ -23,15 +23,6 @@ Add the marketplace and install plugins:
 
 ## Install — Cursor
 
-### Option A: Marketplace (same as Claude Code)
-
-```
-/plugin marketplace add ai-dev-garage/ai-dev-garage-pipeline
-/plugin install ai-garage-core@ai-dev-garage
-```
-
-### Option B: Local testing via symlinks
-
 Clone the repo and run the installer:
 
 ```bash
