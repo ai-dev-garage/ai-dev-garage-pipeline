@@ -1,0 +1,32 @@
+{
+  "name": "ai-dev-garage",
+  "owner": {
+    "name": "AI Dev Garage"
+  },
+  "metadata": {
+    "description": "AI Dev Garage — portable AI workflow runtime with standards, agile, dev-workflow, and Jira plugins",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "ai-garage-core",
+      "source": "./plugins/ai-garage-core",
+      "description": "Pipeline standards (skill, agent, command, rule), self-management commands, and shared runtime rules."
+    },
+    {
+      "name": "ai-garage-agile",
+      "source": "./plugins/ai-garage-agile",
+      "description": "Agile backlog management — define and plan features, epics, stories; generate acceptance criteria and formatted definitions."
+    },
+    {
+      "name": "ai-garage-dev-workflow",
+      "source": "./plugins/ai-garage-dev-workflow",
+      "description": "Generic task delivery pipeline — analyze, plan, implement, finalize with WBS parallelism and project constitution management."
+    },
+    {
+      "name": "ai-garage-jira",
+      "source": "./plugins/ai-garage-jira",
+      "description": "Jira integration — fetch tickets, walk hierarchy, gap analysis; plugs into dev-workflow as a task source."
+    }
+  ]
+}

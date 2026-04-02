@@ -1,0 +1,12 @@
+{
+  "name": "ai-garage-agile",
+  "version": "1.0.0",
+  "description": "Agile backlog management — define and plan features, epics, stories; generate acceptance criteria, user stories, and formatted definitions.",
+  "author": {
+    "name": "AI Dev Garage"
+  },
+  "repository": "https://github.com/ai-dev-garage/ai-dev-garage-pipeline",
+  "license": "MIT",
+  "keywords": ["ai-dev-garage", "agile", "backlog", "epics", "stories", "planning"],
+  "hooks": "./hooks/claude/hooks.json"
+}

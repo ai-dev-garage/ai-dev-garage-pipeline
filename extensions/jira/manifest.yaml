@@ -1,3 +1,0 @@
-name: jira
-version: 1.0.0
-description: Jira integration — fetch tickets, walk hierarchy, gap analysis; plugs into dev-workflow deliver-task as a task source.

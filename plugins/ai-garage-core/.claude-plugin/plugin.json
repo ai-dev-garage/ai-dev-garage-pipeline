@@ -1,0 +1,12 @@
+{
+  "name": "ai-garage-core",
+  "version": "1.0.0",
+  "description": "AI Dev Garage core — pipeline standards (skill, agent, command, rule), self-management commands, and shared runtime rules.",
+  "author": {
+    "name": "AI Dev Garage"
+  },
+  "repository": "https://github.com/ai-dev-garage/ai-dev-garage-pipeline",
+  "license": "MIT",
+  "keywords": ["ai-dev-garage", "standards", "skills", "agents", "commands", "rules"],
+  "hooks": "./hooks/claude/hooks.json"
+}
