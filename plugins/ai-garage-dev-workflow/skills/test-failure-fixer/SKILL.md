@@ -10,7 +10,7 @@ argument-hint: module or test scope (optional)
 
 - A build or test phase fails during implementation.
 - User asks to fix failing tests.
-- Called by `implement-task` agent when a WBS item's tests fail.
+- Called by an agent when tests fail during a workflow.
 
 ## Instructions
 

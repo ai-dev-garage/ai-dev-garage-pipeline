@@ -28,6 +28,7 @@ If neither exists, create `{PROJECT_ROOT}/.ai-dev-garage/project-config.yaml` wi
 The caller specifies which value(s) they need. Supported keys:
 
 - `project.name`
+- `project.stack`
 - `project.build-command`
 - `project.test-command`
 - `project.docs-path`
@@ -62,6 +63,22 @@ For **credential keys** (`integrations.jira.api-token`):
 - Check environment variable first (`JIRA_API_TOKEN`).
 - Then check global config `~/.config/ai-garage/config.yaml`.
 - If still missing, ask the user. Write to project config (or suggest env var for secrets).
+
+For **stack keys** (`project.stack`):
+- Auto-detect from project files at `PROJECT_ROOT`:
+
+  | File / Pattern | Detected Stack |
+  |---|---|
+  | `pom.xml` or `build.gradle` / `build.gradle.kts` | `java` |
+  | `package.json` | `node` |
+  | `requirements.txt` / `pyproject.toml` | `python` |
+  | `go.mod` | `go` |
+  | `Cargo.toml` | `rust` |
+  | `*.xcodeproj` / `Package.swift` | `ios` |
+
+- Multiple stacks can be detected (e.g., `[java, spring]` if `pom.xml` contains `spring-boot`).
+- If auto-detection is ambiguous or finds nothing, ask the user.
+- Write the detected/confirmed value back to config as a list.
 
 For **model keys** (`models.low`, `models.medium`, `models.high`):
 - If missing, apply defaults: `low: haiku`, `medium: sonnet`, `high: inherit`.

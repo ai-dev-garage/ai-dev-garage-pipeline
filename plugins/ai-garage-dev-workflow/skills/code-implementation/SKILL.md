@@ -1,6 +1,6 @@
 ---
 name: code-implementation
-description: Implement production code or tests ensuring compliance with the project constitution. Use when asked to implement a feature, logic, class, function, or to cover something with tests. Language-agnostic.
+description: Implement production code or tests following project conventions. Use when asked to implement a feature, logic, class, function, or to cover something with tests. Language-agnostic — stack-specific extensions compose on top.
 argument-hint: description of what to implement
 ---
 
@@ -8,99 +8,66 @@ argument-hint: description of what to implement
 
 ## When to use
 
-- User asks to implement a feature, function, class, module, or test.
-- Called by `implement-task` agent during WBS execution.
-- Ad-hoc implementation requests outside a delivery workflow.
+- Implement a feature, function, class, module, or test.
+- Ad-hoc implementation requests.
+- The calling agent provides context (scope, constitution rules, build commands).
+
+## Inputs (provided by caller)
+
+- Description of what to implement.
+- `PROJECT_ROOT` — resolved project root path.
+- `build-command` — project's configured build command.
+- `test-command` — project's configured test command.
+- Constitution rules (if any) — architecture principles to follow.
+- Scope context — which module(s) or directory the change belongs to.
 
 ## Instructions
 
-### 1. Load WBS context (if available)
+### 1. Identify scope
 
-Resolve the task key in order:
-
-1. **Explicit** — caller or user provided a task key.
-2. **Branch name** — run `git branch --show-current`. If the branch matches `{prefix}/{TASK-KEY}`, extract the key.
-3. **Single state dir** — list directories under `.ai-dev-garage/.workflow-state-tmp/`. If exactly one exists, use it.
-
-If a key is found, read `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/work-breakdown-structure.md`.
-
-If found:
-- Read the `## Progress` section.
-- Find the first `[IN PROGRESS]` item. If none, note the first `NOT STARTED` item.
-- Use this context to align the implementation with the agreed plan.
-
-If no WBS exists, proceed without tracking.
-
-### 2. Read the constitution
-
-Look for `CONSTITUTION.md` at the project root.
-
-Read it fully. All implementation decisions must comply with every principle it defines. If the file does not exist, warn the user and proceed with general best-practice defaults.
-
-### 3. Identify scope
-
-Using the constitution's architecture principles (if available):
+Using the caller-provided scope context and constitution rules:
 
 - Determine which module(s) or directory the change belongs to.
 - Confirm whether this is production code, tests, or both.
 - Confirm any cross-module dependency rules that apply.
 
-### 4. Implement production code
+### 2. Implement production code
 
-Apply every constitution principle that governs this type of change:
+Apply project conventions and constitution principles:
 
 - Module placement and dependency direction.
 - Naming and structural conventions.
 - Forbidden patterns explicitly listed in the constitution.
 - When a design decision is non-obvious, leave a brief inline comment.
 
-### 5. Implement tests
+### 3. Implement tests
 
-Apply every constitution principle that governs testing:
+Apply project testing conventions:
 
 - Test naming conventions.
 - Test structure and organization.
 - Mocking and assertion rules.
 - Test placement conventions.
 
-Prefer TDD when the WBS phase indicates it.
+### 4. Self-review
 
-### 6. Self-review
+After implementing, verify:
 
-After implementing, review every modified file against:
-
-1. All applicable constitution principles — tick off each one.
-2. No duplication introduced across files.
-3. Build passes: run the project's configured build command for affected modules.
-
-### 7. Update WBS (if active)
-
-If a WBS was found in step 1:
-
-- Match the change to WBS items (scan the entire `## Progress` section).
-- Mark completed items `[DONE]`, partially addressed items `[IN PROGRESS]`.
-- Append to `### Implementation Summary` of the relevant phase:
-  - What was changed and why (one line per change).
-  - HLD impact: decisions that may require documentation updates, or "None".
-- If all items in a phase are now `[DONE]`, write the full phase summary.
-
-## Input
-
-- Description of what to implement.
-- `PROJECT_ROOT` — resolved project root path.
-- `TASK-KEY` (optional) — for WBS tracking.
-- `build-command` — project's configured build command.
+- [ ] No unnecessary duplication introduced across files.
+- [ ] Build passes: run the configured build command for affected modules.
+- [ ] Tests pass: run the configured test command for affected modules.
+- [ ] No hardcoded secrets or credentials.
+- [ ] No debug/temporary code left in.
+- [ ] Constitution principles followed (if provided by caller).
 
 ## Output
 
 - Implemented code files.
-- Updated WBS (if active).
 - Self-review results.
 
 ## Rules
 
-- Constitution compliance is mandatory when a constitution exists.
-- WBS tracking is optional — activates only when state files exist.
 - Language-agnostic: use the project's actual tech stack, not hardcoded patterns.
 - Build/test commands come from caller-provided inputs, not hardcoded.
-- Project-specific patterns belong in the constitution, not in this skill. See [REFERENCE.md](references/REFERENCE.md).
+- Project-specific patterns belong in the constitution, not in this skill.
+- Stack-specific extensions (e.g., `java-code-implementation`) compose on top of this skill when the project stack is detected. See [REFERENCE.md](references/REFERENCE.md).
