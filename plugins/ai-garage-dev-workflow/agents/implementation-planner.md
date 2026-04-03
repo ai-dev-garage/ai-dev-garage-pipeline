@@ -47,23 +47,39 @@ You are the **planning orchestrator** for task delivery. You build a Work Breakd
 
 **Create mode (no existing WBS):** Build phases dynamically based on analysis context and constitution. Do not use a hardcoded phase list — derive phases from what the task actually requires. Common phase types include: data model, business logic, API/integration, tests, configuration.
 
-Each phase gets a unique key: `phase-{N}-{slug}` (lowercase, hyphens, derived from phase title). Format:
+Each phase gets a unique key: `phase-{N}-{slug}` (lowercase, hyphens, derived from phase title) and an optional `[depends-on:]` annotation listing prerequisite phase keys. Phases without `[depends-on:]` depend on the immediately preceding phase.
+
+Format:
 
 ```markdown
 ## Progress
 
-### phase-1-data-model [NOT STARTED]
-- [ ] Create User entity with fields id, name, email [effort:low]
-- [ ] Add repository interface [effort:low]
+### phase-1-domain-models [NOT STARTED]
+- [ ] Create User entity [effort:low]
+- [ ] Create Order entity [effort:low]
 
-### phase-2-business-logic [NOT STARTED]
-- [ ] Implement registration service [effort:medium]
-- [ ] Add input validation [effort:low] [PARALLEL:validation]
+### phase-2-api-interfaces [NOT STARTED] [depends-on:phase-1-domain-models]
+- [ ] Define UserService interface [effort:low]
+- [ ] Define OrderService interface [effort:low]
+
+### phase-3-impl-user-service [NOT STARTED] [depends-on:phase-2-api-interfaces]
+- [ ] Implement UserService [effort:medium]
+
+### phase-4-impl-order-service [NOT STARTED] [depends-on:phase-2-api-interfaces]
+- [ ] Implement OrderService [effort:medium]
+
+### phase-5-unit-tests [NOT STARTED] [depends-on:phase-2-api-interfaces]
+- [ ] Write UserService unit tests [effort:medium]
+- [ ] Write OrderService unit tests [effort:medium]
+
+### phase-6-integration [NOT STARTED] [depends-on:phase-3-impl-user-service,phase-4-impl-order-service,phase-5-unit-tests]
+- [ ] Integration tests [effort:high]
+- [ ] Code review and refactoring [effort:medium]
 ```
 
 For each WBS item:
 - Assign an `effort:` annotation (`low`, `medium`, or `high`) based on complexity.
-- Tag items that can execute concurrently with `[PARALLEL:group-name]`.
+- Tag items that can execute concurrently within a phase with `[PARALLEL:group-name]`.
 
 **Update mode (existing WBS):** Load the WBS. Propose targeted additions or modifications. Preserve all `[DONE]` and `[IN PROGRESS]` items unchanged. New items can be marked `[ADDED]`.
 
@@ -96,3 +112,18 @@ For each WBS item:
 - Parallel groups: items that have no dependencies on each other within a phase get the same `[PARALLEL:group-name]` tag.
 - In update mode, never modify `[DONE]` items.
 - Do not persist until user confirms at the review gate.
+
+### Phase dependency rules
+
+- Use `[depends-on:phase-key,...]` to express which phases must complete before this phase can start.
+- Phases without `[depends-on:]` depend on the immediately preceding phase (sequential by default).
+- Multiple phases may depend on the same predecessor — the orchestrator may execute them in parallel.
+
+### File-boundary safety for parallel phases
+
+When designing phases that share the same dependency (and could therefore run concurrently):
+
+1. **Each parallel phase must target distinct files/modules.** If two phases would both modify the same file, add a dependency between them instead.
+2. **Foundation first:** models, interfaces, stubs, and shared configuration go in sequential phases before any parallel group.
+3. **Cross-cutting last:** DI wiring, routing config, shared utilities that reference multiple implementations go in a sequential phase after the parallel group.
+4. **Verification joins all:** test/review/refactor phases should `[depends-on:]` all implementation phases they verify.
