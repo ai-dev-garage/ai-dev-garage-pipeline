@@ -73,20 +73,25 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
   - **C) Autonomous** — end-to-end, stop only on blockers.
 - **Output:** Execution mode recorded.
 
-### 6. Phase 3 — Implement (phase by phase)
-- **Goal:** Execute the WBS phase by phase.
-- **Action:** For each phase in the WBS (in order):
+### 6. Phase 3 — Implement (dependency-aware scheduling)
+- **Goal:** Execute WBS phases respecting the dependency graph.
+- **Action:** Repeat until all phases are `[DONE]`:
 
-  1. Identify the next phase with status `NOT STARTED` or `IN PROGRESS`.
-  2. Delegate to the **implement-task** agent, passing `execution_mode`, `TASK-KEY`, and `PHASE-KEY`.
-  3. After `implement-task` returns, read `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/{PHASE-KEY}/work-report.md`.
-  4. **Reconcile WBS:** For each item in the work report:
-     - `status: done` → mark item `[DONE]` in WBS
+  1. **Find ready phases:** Parse `[depends-on:]` annotations. A phase is ready when its status is `NOT STARTED` and all its dependencies are `[DONE]`. Phases without `[depends-on:]` depend on the immediately preceding phase.
+  2. **Dispatch:**
+     - **One ready phase:** Delegate to **implement-task** sequentially with `TASK-KEY`, `PHASE-KEY`, and `execution_mode`.
+     - **Multiple ready phases:** At your discretion, you may spawn parallel **implement-task** agents (one per phase, as background sub-agents). Consider running in parallel when:
+       - Execution mode is autonomous or batch
+       - Phases target clearly separate modules/files
+       - Phases are low-to-medium effort
+     - When in doubt or in full-control mode, run sequentially.
+  3. **Reconcile:** After agent(s) return, read each `{PHASE-KEY}/work-report.md`. For each item:
+     - `status: done` → mark `[DONE]` in WBS
      - `status: blocked` → keep `[IN PROGRESS]`, note blocker
      - `status: partial` → keep `[IN PROGRESS]`
-  5. If all items in the phase are `[DONE]`, mark the phase `[DONE]` and write `### Implementation Summary` from the work report's Summary section.
-  6. Present updated WBS status. If blockers exist, ask user how to proceed.
-  7. Gate before next phase: ask Continue / Re-run / Stop (unless autonomous mode).
+  4. If all items in a phase are `[DONE]`, mark the phase `[DONE]` and write `### Implementation Summary` from the work report.
+  5. Present updated WBS status. If blockers exist, ask user how to proceed.
+  6. Gate before next round: ask Continue / Re-run / Stop (unless autonomous mode).
 
 - **Output:** Updated WBS with implementation progress.
 
