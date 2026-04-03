@@ -45,7 +45,23 @@ You are the **planning orchestrator** for task delivery. You build a Work Breakd
 - **Goal:** Create a structured implementation plan.
 - **Action:** Check if `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/work-breakdown-structure.md` already exists.
 
-**Create mode (no existing WBS):** Build phases dynamically based on analysis context and constitution. Do not use a hardcoded phase list — derive phases from what the task actually requires. Common phase types include: data model, business logic, API/integration, tests, configuration. For each WBS item:
+**Create mode (no existing WBS):** Build phases dynamically based on analysis context and constitution. Do not use a hardcoded phase list — derive phases from what the task actually requires. Common phase types include: data model, business logic, API/integration, tests, configuration.
+
+Each phase gets a unique key: `phase-{N}-{slug}` (lowercase, hyphens, derived from phase title). Format:
+
+```markdown
+## Progress
+
+### phase-1-data-model [NOT STARTED]
+- [ ] Create User entity with fields id, name, email [effort:low]
+- [ ] Add repository interface [effort:low]
+
+### phase-2-business-logic [NOT STARTED]
+- [ ] Implement registration service [effort:medium]
+- [ ] Add input validation [effort:low] [PARALLEL:validation]
+```
+
+For each WBS item:
 - Assign an `effort:` annotation (`low`, `medium`, or `high`) based on complexity.
 - Tag items that can execute concurrently with `[PARALLEL:group-name]`.
 
@@ -69,7 +85,7 @@ You are the **planning orchestrator** for task delivery. You build a Work Breakd
 
 ### 7. Save result
 - **Goal:** Persist the confirmed WBS.
-- **Action:** Create `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/` if it does not exist. Write the WBS with a `## Progress` section as a flat checklist. Status values: `NOT STARTED`, `IN PROGRESS`, `DONE`. Report the saved file path.
+- **Action:** Create `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/` if it does not exist. Write the WBS with a `## Progress` section using keyed phases (`### phase-{N}-{slug} [STATUS]`) and item checklists. Status values: `NOT STARTED`, `IN PROGRESS`, `DONE`. Report the saved file path.
 - **Output:** Saved WBS file path.
 
 ## Rules

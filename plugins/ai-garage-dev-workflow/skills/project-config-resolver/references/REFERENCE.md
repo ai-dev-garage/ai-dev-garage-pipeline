@@ -7,6 +7,7 @@ The project config file lives at `{PROJECT_ROOT}/.ai-dev-garage/project-config.y
 ```yaml
 project:
   name: "my-service"              # Project/service identifier
+  stack: []                        # List of stack identifiers, e.g. [java, spring]
   build-command: "npm run build"  # Shell command to build the project
   test-command: "npm test"        # Shell command to run tests
   docs-path: null                 # Absolute path to documentation folder (HLD/PRD)
@@ -47,10 +48,29 @@ All other keys have no default and must be provided by the user or left as `null
 
 Secrets (`api-token`) should preferably be stored as environment variables rather than in config files. The skill checks env vars first, then config files, and only asks the user as a last resort. When writing credentials to config, suggest the user switch to env vars for security.
 
+## Stack auto-detection
+
+When `project.stack` is missing, auto-detect from project files:
+
+| File / Pattern | Detected Stack |
+|---|---|
+| `pom.xml` or `build.gradle` / `build.gradle.kts` | `java` |
+| `pom.xml` with `spring-boot` dependency | `java`, `spring` |
+| `package.json` | `node` |
+| `requirements.txt` / `pyproject.toml` | `python` |
+| `go.mod` | `go` |
+| `Cargo.toml` | `rust` |
+| `*.xcodeproj` / `Package.swift` | `ios` |
+
+Multiple stacks can coexist (e.g., `[java, spring]`). If detection is ambiguous, ask the user. Write the result back to config.
+
+Stack identifiers are used by agents to resolve stack-specific extension skills via the naming convention `{stack}-{base-skill-name}`.
+
 ## Validation rules
 
 | Key | Validation |
 |-----|-----------|
+| `project.stack` | List of lowercase identifiers |
 | `project.docs-path` | Path exists on disk |
 | `project.build-command` | Non-empty string |
 | `project.test-command` | Non-empty string |

@@ -239,6 +239,44 @@ Plugins are discovered automatically by Claude Code and Cursor. Project override
 - [ ] **Secrets:** no chat solicitation; secret supply via env and/or documented `.env` workflow; templates only in **`assets/`**; rules in **`references/`**; see **Secrets & credentials** above
 - [ ] **Plugin boundary:** no required asset references outside the plugin's own tree; no cross-plugin hard dependencies
 
+## Stack extension skills
+
+Extension skills provide stack-specific patterns that compose on top of a generic base skill. They follow these conventions:
+
+### Frontmatter fields
+
+- `extends: <plugin>:<base-skill>` — which base skill this extends (informational, not runtime-interpreted)
+- `stacks: [<stack-id>, ...]` — which stack identifiers activate this skill (informational, not runtime-interpreted)
+
+### Naming convention
+
+`{stack}-{base-skill-name}` — e.g., `java-code-implementation` extends `code-implementation`.
+
+### Content rules
+
+- Extension skills contain **only delta guidance** — stack-specific patterns, not a copy of the base skill.
+- Reference base skill steps by number when adding patterns (e.g., "After step 2, also apply...").
+- The calling agent loads and applies both the base skill and the extension skill together.
+
+### Resolution
+
+Agents resolve extension skills by checking `project.stack` (from `project-config-resolver`) and looking for `{stack}-{base-skill-name}` in installed plugins. This is agent-driven, not runtime-dispatched.
+
+### Precedence
+
+CONSTITUTION.md > Stack extension skill > Base skill (for any conflicting guidance).
+
+### Example
+
+```yaml
+---
+name: java-code-implementation
+description: Java-specific coding patterns. Use alongside code-implementation on Java projects.
+extends: ai-garage-dev-workflow:code-implementation
+stacks: [java]
+---
+```
+
 ## Do not
 
 - Duplicate content that belongs in project rules or another skill.

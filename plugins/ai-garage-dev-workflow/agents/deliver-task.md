@@ -73,9 +73,21 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
   - **C) Autonomous** — end-to-end, stop only on blockers.
 - **Output:** Execution mode recorded.
 
-### 6. Phase 3 — Implement
-- **Goal:** Execute the WBS.
-- **Action:** Delegate to the **implement-task** agent, passing `execution_mode` and the task key. After completion, verify WBS progress.
+### 6. Phase 3 — Implement (phase by phase)
+- **Goal:** Execute the WBS phase by phase.
+- **Action:** For each phase in the WBS (in order):
+
+  1. Identify the next phase with status `NOT STARTED` or `IN PROGRESS`.
+  2. Delegate to the **implement-task** agent, passing `execution_mode`, `TASK-KEY`, and `PHASE-KEY`.
+  3. After `implement-task` returns, read `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/{PHASE-KEY}/work-report.md`.
+  4. **Reconcile WBS:** For each item in the work report:
+     - `status: done` → mark item `[DONE]` in WBS
+     - `status: blocked` → keep `[IN PROGRESS]`, note blocker
+     - `status: partial` → keep `[IN PROGRESS]`
+  5. If all items in the phase are `[DONE]`, mark the phase `[DONE]` and write `### Implementation Summary` from the work report's Summary section.
+  6. Present updated WBS status. If blockers exist, ask user how to proceed.
+  7. Gate before next phase: ask Continue / Re-run / Stop (unless autonomous mode).
+
 - **Output:** Updated WBS with implementation progress.
 
 ### 7. Phase 4 — Finalize
