@@ -7,6 +7,7 @@ description: >-
 skills:
   - ai-garage-dev-workflow:project-config-resolver
   - ai-garage-dev-workflow:code-quality-review
+  - ai-garage-dev-workflow:github-workflow
 inputs:
   - TASK-KEY
   - PROJECT_ROOT
@@ -56,8 +57,13 @@ You are the **finalization orchestrator** for a completed task delivery. You pro
 
 ### 5. Save and present
 - **Goal:** Persist the report and get user decision.
-- **Action:** Write the report to `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/finalization-report.md`. Include a `## Code Quality` section with the global review findings from step 2. Present a summary to the user. If blockers were found in the quality review, flag them prominently. If documentation changes are identified, ask whether to proceed with updates. If no changes needed, declare the task complete.
+- **Action:** Write the report to `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/finalization-report.md`. Include a `## Code Quality` section with the global review findings from step 2. Present a summary to the user. If blockers were found in the quality review, flag them prominently. If documentation changes are identified, ask whether to proceed with updates. If no changes needed, proceed to PR creation.
 - **Output:** Saved report file path; user decision on doc updates and quality blockers.
+
+### 6. Create PR
+- **Goal:** Open a pull request for the completed task.
+- **Action:** Use the **github-workflow** skill in `pr-create` mode. Use `project-config-resolver` to get `base-branch`. Sync the branch with base first (`branch-sync` mode). Construct the PR title from the task key and a short description. Populate the body from the finalization report summary (key decisions, files changed, deviations). Ask the user to confirm before creating.
+- **Output:** PR URL.
 
 ## Rules
 
