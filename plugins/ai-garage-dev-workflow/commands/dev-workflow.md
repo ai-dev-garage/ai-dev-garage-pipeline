@@ -34,6 +34,11 @@ $ARGUMENTS
    | `change-publisher` | Analyze, split, commit, and push changes |
    | `task-gap-clarification` | Interactively resolve analysis gaps |
    | `code-implementation` | Implement code with constitution compliance |
+   | `code-quality-review` | Paradigm-aware design quality review (cohesion, coupling, abstraction) |
+
+   | Command | Description |
+   |---|---|
+   | `review-code` | Review code quality locally or from a GitHub PR |
 
    **Usage:** Provide a task key (e.g. `PROJ-1234`) or say "deliver", "plan", "implement", "finalize" to route to the appropriate agent.
 
