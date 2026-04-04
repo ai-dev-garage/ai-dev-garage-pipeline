@@ -35,6 +35,7 @@ $ARGUMENTS
    | `task-gap-clarification` | Interactively resolve analysis gaps |
    | `code-implementation` | Implement code with constitution compliance |
    | `code-quality-review` | Paradigm-aware design quality review (cohesion, coupling, abstraction) |
+   | `github-workflow` | Commits, PR creation, PR review conventions, and branch sync |
 
    | Command | Description |
    |---|---|
