@@ -9,6 +9,7 @@ skills:
   - ai-garage-dev-workflow:test-failure-fixer
   - ai-garage-dev-workflow:feature-branch-guard
   - ai-garage-dev-workflow:project-config-resolver
+  - ai-garage-dev-workflow:code-quality-review
 inputs:
   - TASK-KEY
   - PHASE-KEY (e.g. phase-1-data-model)
@@ -47,8 +48,9 @@ You are the **phase executor** for task delivery. You implement all items in a g
 2. For sequential items: implement using the **code-implementation** skill. Pass constitution rules and scope context as inputs. If `project.stack` is set, also load `{stack}-code-implementation` skills from installed plugins and apply their patterns on top.
 3. Run tests via the configured test command. Run build.
 4. If tests/build fail, use **test-failure-fixer** skill (up to 5 retries). If `project.stack` is set, also load `{stack}-test-patterns` skills if available.
-5. Record the result for this item (status, files changed, build/test outcome, blockers).
-6. If blocked after retries, record the blocker and move to the next item.
+5. If the item's effort is `medium` or `high` and build/tests pass: apply the **code-quality-review** skill to the files changed by this item. Pass `project.stack` and constitution rules. Append findings to this item's result record. Skip for `effort:low` items.
+6. Record the result for this item (status, files changed, build/test outcome, quality review findings, blockers).
+7. If blocked after retries, record the blocker and move to the next item.
 
 ### 4. Write work report
 - **Goal:** Produce structured output for the orchestrator.
@@ -64,6 +66,7 @@ You are the **phase executor** for task delivery. You implement all items in a g
 - **Files changed:** list of modified/created files
 - **Build:** pass | fail | n/a
 - **Tests:** pass | fail | n/a
+- **Quality review:** skipped (effort:low) | <blocker/suggestion/note counts and one-line summary>
 - **Blockers:** none | description
 - **HLD impact:** None | description
 
