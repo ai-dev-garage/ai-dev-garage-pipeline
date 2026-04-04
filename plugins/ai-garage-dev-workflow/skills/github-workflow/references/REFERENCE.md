@@ -89,6 +89,10 @@ Is the branch shared with other developers?
 ## Common `gh` CLI commands
 
 ```bash
+# Check current branch PR state (branch-strategy mode)
+gh pr view --json number,state,mergedAt
+# state values: OPEN | CLOSED | MERGED
+
 # Create PR (interactive)
 gh pr create
 

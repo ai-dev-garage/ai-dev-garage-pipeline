@@ -1,19 +1,39 @@
 ---
 name: github-workflow
 description: Consolidated GitHub operations guide — commits, PR creation, PR review conventions, and branch sync. Use whenever an agent needs to create a commit, open a PR, review a PR, or sync a branch. Constitution overrides all defaults.
-argument-hint: commit | pr-create | pr-review | branch-sync
+argument-hint: branch-strategy | commit | pr-create | pr-review | branch-sync
 ---
 
 # GitHub workflow
 
 ## When to use
 
+- Deciding whether to reuse the current branch or create a new one before any PR work.
 - Committing changes (complement to `change-publisher` which handles analysis and splitting).
 - Opening a PR after implementation is complete.
 - Reviewing a PR as a human reviewer (not AI design analysis — see `code-quality-review` for that).
 - Syncing a feature branch with its base branch.
 
 ## Instructions
+
+### Mode 0 — Branch strategy
+
+Run this before `pr-create` whenever there is an existing branch with prior PR history, or when the caller is unsure whether to reuse the current branch or start a new one.
+
+1. Check if the current branch has an associated PR: `gh pr view --json number,state,mergedAt`.
+2. Determine the branch path based on the result:
+
+   **No PR exists** → stay on the current branch. Proceed to `pr-create` when ready.
+
+   **PR is open** → stay on the current branch. New commits pushed to it will update the existing PR.
+
+   **PR is merged** →
+   a. Pull the latest base branch: `git fetch origin && git merge origin/<base>` on base (or `git pull origin <base>`).
+   b. Create a new feature branch from the updated base: `git checkout -b <new-branch-name>`.
+   c. Any uncommitted local changes carry over automatically. Staged or unstaged changes are preserved on the new branch.
+   d. Proceed to `commit` then `pr-create` on the new branch.
+
+3. Report the chosen path and the branch name to the caller before proceeding.
 
 ### Mode 1 — Commit
 
@@ -61,7 +81,7 @@ Comment conventions:
 
 ## Input
 
-- **Mode** — one of: `commit`, `pr-create`, `pr-review`, `branch-sync`.
+- **Mode** — one of: `branch-strategy`, `commit`, `pr-create`, `pr-review`, `branch-sync`.
 - **Constitution rules** — project-specific conventions (optional; overrides all defaults when provided).
 - **base-branch** — resolved by `project-config-resolver` (optional; defaults to `main`).
 
