@@ -23,7 +23,16 @@ integrations:
   jira:
     base-url: null                # e.g. https://jira.example.com
     api-token: null               # Personal access token (prefer env var JIRA_API_TOKEN)
+    sync-phases: false            # Mirror WBS phases as Jira sub-tasks (opt-in)
+    subtask-type: "Sub-task"      # Jira issue type name for created sub-tasks
+    transitions:                  # Maps dev-workflow events to Jira transition names
+      phase-started: "In Progress"      # Agent starts a phase
+      phase-implemented: "Need Review"  # implement-task finishes
+      review-started: "In Review"       # Code quality review begins
+      phase-ready: "Ready"              # Quality review passes, phase DONE in WBS
 ```
+
+Each `transitions.*` value is the Jira transition **name** to search for (case-insensitive substring match). Set to `null` to skip that event. This allows adapting to any board layout.
 
 ## Resolution order
 
@@ -41,6 +50,12 @@ integrations:
 | `models.low` | `haiku` |
 | `models.medium` | `sonnet` |
 | `models.high` | `inherit` |
+| `integrations.jira.sync-phases` | `false` |
+| `integrations.jira.subtask-type` | `"Sub-task"` |
+| `integrations.jira.transitions.phase-started` | `"In Progress"` |
+| `integrations.jira.transitions.phase-implemented` | `"Need Review"` |
+| `integrations.jira.transitions.review-started` | `"In Review"` |
+| `integrations.jira.transitions.phase-ready` | `"Ready"` |
 
 All other keys have no default and must be provided by the user or left as `null`.
 

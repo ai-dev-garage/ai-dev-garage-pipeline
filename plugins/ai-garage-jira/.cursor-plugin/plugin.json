@@ -1,7 +1,7 @@
 {
   "name": "ai-garage-jira",
-  "version": "1.0.0",
-  "description": "Jira integration — fetch tickets, walk hierarchy, gap analysis; plugs into dev-workflow as a task source.",
+  "version": "1.1.0",
+  "description": "Jira integration — fetch tickets, walk hierarchy, gap analysis, and mirror WBS phases as sub-tasks with status transitions.",
   "author": {
     "name": "AI Dev Garage"
   },
