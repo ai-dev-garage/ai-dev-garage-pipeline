@@ -1,0 +1,11 @@
+{
+  "name": "ai-garage-architect",
+  "version": "0.1.0",
+  "description": "Architect / techlead assistant — advisory (discuss trade-offs, review) and producer (generate ADRs) modes with parallel researcher fan-out. Reads existing arch docs (local) or works greenfield.",
+  "author": {
+    "name": "AI Dev Garage"
+  },
+  "repository": "https://github.com/ai-dev-garage/ai-dev-garage-pipeline",
+  "license": "MIT",
+  "keywords": ["ai-dev-garage", "architect", "adr", "architecture", "c4", "nfr", "design-review"]
+}
