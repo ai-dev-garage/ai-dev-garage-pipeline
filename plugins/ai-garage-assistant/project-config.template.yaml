@@ -1,0 +1,25 @@
+# ai-garage-assistant — project-level config template
+# Copy relevant keys into {PROJECT_ROOT}/.ai-dev-garage/project-config.yaml
+# (or the global ~/.config/ai-garage/config.yaml) and fill in values.
+
+integrations:
+  assistant:
+    # Name of the Notion MCP connector as registered in your Claude setup.
+    # This plugin is connector-agnostic — any Notion MCP works.
+    # If left null and exactly one `mcp__*__API-post-page` tool matching *notion*
+    # is available, it is auto-detected and written back here.
+    notion-mcp-connector: null        # e.g. "garage-notion"
+
+    # Database that receives assistant entries.
+    # Create once via the Notion UI (see claude-project/notion-db-template.md)
+    # or let the plugin bootstrap it under `notion-parent-page-id`.
+    notion-database-id: null          # e.g. "1a2b3c4d-5e6f-..."
+
+    # Parent page for first-time DB creation. Not needed after the DB exists.
+    notion-parent-page-id: null
+
+    # Tags applied to every entry (free-form strings).
+    default-tags: []
+
+    # Free-form prefix prepended to the `Session` property (e.g. project name).
+    session-prefix: null

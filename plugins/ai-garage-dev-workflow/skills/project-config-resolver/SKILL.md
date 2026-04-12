@@ -42,6 +42,11 @@ The caller specifies which value(s) they need. Supported keys:
 - `integrations.jira.transitions.phase-implemented`
 - `integrations.jira.transitions.review-started`
 - `integrations.jira.transitions.phase-ready`
+- `integrations.assistant.notion-mcp-connector`
+- `integrations.assistant.notion-database-id`
+- `integrations.assistant.notion-parent-page-id`
+- `integrations.assistant.default-tags`
+- `integrations.assistant.session-prefix`
 
 Resolve only the requested keys. Callers must handle a `null` return gracefully.
 

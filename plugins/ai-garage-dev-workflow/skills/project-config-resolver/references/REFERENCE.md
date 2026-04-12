@@ -30,6 +30,12 @@ integrations:
       phase-implemented: "Need Review"  # implement-task finishes
       review-started: "In Review"       # Code quality review begins
       phase-ready: "Ready"              # Quality review passes, phase DONE in WBS
+  assistant:
+    notion-mcp-connector: null    # Name of your Notion MCP connector; auto-detected if unique
+    notion-database-id: null      # Assistant Inbox database id
+    notion-parent-page-id: null   # Used only for first-time DB bootstrap
+    default-tags: []              # Tags applied to every entry
+    session-prefix: null          # Prepended to the Session property (e.g. project name)
 ```
 
 Each `transitions.*` value is the Jira transition **name** to search for (case-insensitive substring match). Set to `null` to skip that event. This allows adapting to any board layout.
@@ -91,3 +97,6 @@ Stack identifiers are used by agents to resolve stack-specific extension skills 
 | `project.test-command` | Non-empty string |
 | `models.*` | One of: `haiku`, `sonnet`, `opus`, `inherit`, or a full model ID |
 | `integrations.jira.base-url` | Starts with `https://` |
+| `integrations.assistant.notion-mcp-connector` | Non-empty string matching an installed MCP connector |
+| `integrations.assistant.notion-database-id` | Non-empty string (Notion database id / UUID) |
+| `integrations.assistant.default-tags` | List of strings |
