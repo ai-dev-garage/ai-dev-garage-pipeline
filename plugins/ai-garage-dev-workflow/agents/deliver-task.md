@@ -8,6 +8,7 @@ description: >-
 skills:
   - ai-garage-dev-workflow:feature-branch-guard
   - ai-garage-dev-workflow:project-config-resolver
+  - ai-garage-jira:jira-phase-sync
 inputs:
   - TASK-KEY or Jira ticket key/URL
   - task_source (jira | github | manual — default: manual)
@@ -57,6 +58,13 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
   - **manual:** Ask the user to paste or reference a markdown brief describing the task. Save it as `task-analysis-result.md`.
   - **github:** (future — not yet implemented; fall back to manual).
 - Skip if `task-analysis-result.md` already exists and user chose **Continue**.
+- **One-time Jira sync nudge:** When `task_source=jira` and the ai-garage-jira plugin is installed, use **project-config-resolver** to read `integrations.jira.sync-phases`. If the key is **absent** from project config (not just `false` — genuinely unset, meaning the user has never been asked):
+  - Briefly explain the feature: "Optional: mirror WBS phases as Jira sub-tasks and transition them on the board as phases progress. Only the final 'Done' transition stays on you."
+  - Ask: "Enable Jira phase sync for this project? (yes / no / show config)"
+  - If **yes**: write `integrations.jira.sync-phases: true` to `.ai-dev-garage/project-config.yaml` (with defaults for `subtask-type` and `transitions.*` — see `project-config.template.yaml`). Tell the user they can tune transition names in the config file.
+  - If **no**: write `integrations.jira.sync-phases: false` so the nudge does not fire again.
+  - If **show config**: point the user at `${CLAUDE_PLUGIN_ROOT}/project-config.template.yaml` for the full schema, then re-ask.
+  - Do not block the workflow — continue with Phase 1 regardless of the answer.
 - **Output:** `task-analysis-result.md` saved.
 
 ### 4. Phase 2 — Plan
@@ -64,6 +72,23 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
 - **Action:** Delegate to the **implementation-planner** agent with the task key. After the planner saves, read the WBS and present the `## Progress` section. **STOP** and wait for user confirmation before proceeding.
 - Skip if WBS already exists and user chose **Continue**.
 - **Output:** User-confirmed WBS.
+
+### 4a. Jira phase sync — create sub-tasks (optional)
+- **Goal:** Mirror WBS phases as Jira sub-tasks on the board.
+- **Condition:** Only run when **all** of the following are true:
+  1. `task_source` is `jira`.
+  2. `integrations.jira.sync-phases` is `true` (use **project-config-resolver** to check).
+  3. The **jira-phase-sync** skill is available (jira plugin installed).
+- **Action:**
+  1. Parse the WBS `## Progress` section to extract phases: for each `### phase-{N}-{slug}` header, collect the phase key, a human-readable title, and the item bullet list.
+  2. Skip any phase that already has a `[jira:KEY]` annotation (idempotency for re-runs).
+  3. Resolve `integrations.jira.subtask-type` (default `"Sub-task"`).
+  4. Call **jira-phase-sync** in `create-subtasks` mode with the task key as `parent-key`, the resolved `subtask-type`, and the phases list.
+  5. For each returned `{ phase-key, jira-key }`, annotate the WBS phase header with `[jira:KEY]` — e.g., `### phase-1-domain-models [NOT STARTED] [jira:PROJ-456]`.
+  6. Save the updated WBS.
+- **On failure:** Log a warning. Continue without annotations — the workflow is not blocked.
+- **Skip if:** Condition is false, or WBS already has all phases annotated.
+- **Output:** WBS annotated with `[jira:KEY]` per phase (or unchanged if skipped).
 
 ### 5. Gate — Choose execution mode (mandatory before Phase 3)
 - **Goal:** Determine implementation pacing.
@@ -79,6 +104,7 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
 
   1. **Find ready phases:** Parse `[depends-on:]` annotations. A phase is ready when its status is `NOT STARTED` and all its dependencies are `[DONE]`. Phases without `[depends-on:]` depend on the immediately preceding phase.
   2. **Dispatch:**
+     - **Jira sync — phase started:** Before delegating, if the phase has a `[jira:KEY]` annotation and `integrations.jira.sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with the sub-task key and event `phase-started` (resolved from `integrations.jira.transitions.phase-started`). On failure: warn, continue.
      - **One ready phase:** Delegate to **implement-task** sequentially with `TASK-KEY`, `PHASE-KEY`, and `execution_mode`.
      - **Multiple ready phases:** At your discretion, you may spawn parallel **implement-task** agents (one per phase, as background sub-agents). Consider running in parallel when:
        - Execution mode is autonomous or batch
@@ -89,9 +115,13 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
      - `status: done` → mark `[DONE]` in WBS
      - `status: blocked` → keep `[IN PROGRESS]`, note blocker
      - `status: partial` → keep `[IN PROGRESS]`
-  4. If all items in a phase are `[DONE]`, mark the phase `[DONE]` and write `### Implementation Summary` from the work report.
-  5. Present updated WBS status. If blockers exist, ask user how to proceed.
-  6. Gate before next round: ask Continue / Re-run / Stop (unless autonomous mode).
+     - **Jira sync — phase implemented:** After reconciling, if the phase has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with event `phase-implemented` (resolved from `integrations.jira.transitions.phase-implemented`). On failure: warn, continue.
+  4. **Code quality review (medium/high effort phases):**
+     - **Jira sync — review started:** Before running the quality review, if the phase has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with event `review-started` (resolved from `integrations.jira.transitions.review-started`). On failure: warn, continue.
+  5. If all items in a phase are `[DONE]`, mark the phase `[DONE]` and write `### Implementation Summary` from the work report.
+     - **Jira sync — phase ready:** After marking the phase `[DONE]`, if it has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with event `phase-ready` (resolved from `integrations.jira.transitions.phase-ready`). On failure: warn, continue.
+  6. Present updated WBS status. If blockers exist, ask user how to proceed.
+  7. Gate before next round: ask Continue / Re-run / Stop (unless autonomous mode).
 
 - **Output:** Updated WBS with implementation progress.
 

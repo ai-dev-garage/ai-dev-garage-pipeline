@@ -36,6 +36,12 @@ The caller specifies which value(s) they need. Supported keys:
 - `project.branch-prefix`
 - `models.low` / `models.medium` / `models.high`
 - `integrations.jira.base-url` / `integrations.jira.api-token`
+- `integrations.jira.sync-phases`
+- `integrations.jira.subtask-type`
+- `integrations.jira.transitions.phase-started`
+- `integrations.jira.transitions.phase-implemented`
+- `integrations.jira.transitions.review-started`
+- `integrations.jira.transitions.phase-ready`
 
 Resolve only the requested keys. Callers must handle a `null` return gracefully.
 

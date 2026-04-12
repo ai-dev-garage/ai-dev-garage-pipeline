@@ -14,3 +14,25 @@ REST calls need a **site base URL** and an **API token**. Full precedence (env v
 4. Keep **`jira.env`** out of git (the pipeline **`.gitignore`** ignores that filename; **`jira.template.env`** is committed as documentation).
 
 Agents such as **`jira-task-analysis`** and ad-hoc user requests both use the **`jira-item-fetcher`** skill; credential rules are the same.
+
+## Phase sync (optional)
+
+When enabled, the **`jira-phase-sync`** skill mirrors WBS phases as Jira sub-tasks and transitions their statuses as the delivery workflow progresses. The agent drives sub-tasks through the board; only **Done** remains human-controlled.
+
+**Enable in `project-config.yaml`:**
+
+```yaml
+integrations:
+  jira:
+    sync-phases: true
+    subtask-type: "Sub-task"          # match your project's sub-task issue type
+    transitions:
+      phase-started: "In Progress"    # agent starts a phase
+      phase-implemented: "Need Review"  # implement-task finishes
+      review-started: "In Review"     # code quality review begins
+      phase-ready: "Ready"            # quality review passes, phase DONE in WBS
+```
+
+Set any `transitions.*` value to `null` to skip that event. This adapts to any board layout — from a simple 3-column board to a detailed review pipeline.
+
+See **`skills/jira-phase-sync/SKILL.md`** for full details.

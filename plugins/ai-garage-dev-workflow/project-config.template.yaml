@@ -1,0 +1,44 @@
+# AI Dev Garage — project configuration template
+#
+# Copy this file to `<PROJECT_ROOT>/.ai-dev-garage/project-config.yaml` and edit.
+# All keys are optional. The `project-config-resolver` skill reads this file
+# lazily; missing values are asked for interactively when first needed.
+#
+# Resolution order (per key): project file -> global (~/.config/ai-garage/config.yaml)
+# -> environment variable (for credentials) -> interactive self-recovery.
+
+project:
+  name: null                        # Service/project identifier (free text)
+  stack: []                         # Stack identifiers, e.g. [java, spring]. Auto-detected if empty.
+  build-command: null               # Shell command to build the project, e.g. "npm run build"
+  test-command: null                # Shell command to run tests, e.g. "npm test"
+  docs-path: null                   # Absolute path to documentation folder (HLD/PRD). null if none.
+  base-branch: "main"               # Default branch for rebasing / PR base
+  branch-prefix: "feature"          # Branch naming: {prefix}/{TASK-KEY}
+
+models:
+  # Effort-based model routing. Values: haiku | sonnet | opus | inherit | full-model-id
+  low: haiku                        # Analysis, classification, test fixes
+  medium: sonnet                    # Planning, finalization
+  high: inherit                     # Complex implementation
+
+integrations:
+  jira:
+    # Credentials — prefer environment variables (JIRA_BASE_URL, JIRA_API_TOKEN)
+    # or .config/ai-garage/jira.env files. See ai-garage-jira plugin README.
+    base-url: null                  # e.g. https://your-site.atlassian.net
+    api-token: null                 # Personal API token (not recommended here — use env)
+
+    # Phase sync — optional feature that mirrors WBS phases as Jira sub-tasks
+    # and transitions their statuses as the delivery workflow progresses.
+    # The agent drives sub-tasks through the board; DONE remains human-controlled.
+    sync-phases: false              # Opt-in toggle (default: false)
+    subtask-type: "Sub-task"        # Jira issue type name for created sub-tasks
+
+    # Maps dev-workflow events to Jira transition names (case-insensitive substring match).
+    # Set any value to null to skip that event — adapts to any board layout.
+    transitions:
+      phase-started: "In Progress"      # Agent starts a phase
+      phase-implemented: "Need Review"  # implement-task finishes
+      review-started: "In Review"       # Code quality review begins
+      phase-ready: "Ready"              # Quality review passes / phase DONE in WBS

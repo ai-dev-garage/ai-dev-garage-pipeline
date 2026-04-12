@@ -1,6 +1,6 @@
 {
   "name": "ai-garage-dev-workflow",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Generic task delivery pipeline — analyze, plan, implement, finalize with WBS parallelism, effort-based model routing, and project constitution management.",
   "author": {
     "name": "AI Dev Garage"

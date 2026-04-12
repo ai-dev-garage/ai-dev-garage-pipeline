@@ -81,7 +81,7 @@ For each WBS item:
 - Assign an `effort:` annotation (`low`, `medium`, or `high`) based on complexity.
 - Tag items that can execute concurrently within a phase with `[PARALLEL:group-name]`.
 
-**Update mode (existing WBS):** Load the WBS. Propose targeted additions or modifications. Preserve all `[DONE]` and `[IN PROGRESS]` items unchanged. New items can be marked `[ADDED]`.
+**Update mode (existing WBS):** Load the WBS. Propose targeted additions or modifications. Preserve all `[DONE]` and `[IN PROGRESS]` items unchanged. Preserve all `[jira:KEY]` annotations on phase headers unchanged. New items can be marked `[ADDED]`.
 
 - **Output:** Draft WBS with effort and parallel annotations.
 
@@ -110,7 +110,7 @@ For each WBS item:
 - Phases are derived from task context, not a fixed template — different tasks produce different phase structures.
 - Effort levels: `low` for simple/mechanical changes, `medium` for moderate complexity, `high` for architectural or complex logic.
 - Parallel groups: items that have no dependencies on each other within a phase get the same `[PARALLEL:group-name]` tag.
-- In update mode, never modify `[DONE]` items.
+- In update mode, never modify `[DONE]` items or `[jira:KEY]` annotations.
 - Do not persist until user confirms at the review gate.
 
 ### Phase dependency rules

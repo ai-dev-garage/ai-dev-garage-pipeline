@@ -18,6 +18,7 @@ $ARGUMENTS
    | Command | Description |
    |---|---|
    | `update-constitution` | Create or update the project constitution |
+   | `configure` | Interactive walk-through of project configuration (project, models, Jira integration) |
 
    | Agent | Description |
    |---|---|
