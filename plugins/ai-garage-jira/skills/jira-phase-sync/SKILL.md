@@ -22,7 +22,7 @@ Build **`JIRA_BASE_URL`** (no trailing slash) and **`JIRA_API_TOKEN`** using the
 3. Apply **process environment**: `JIRA_BASE_URL`, `JIRA_API_TOKEN`; use **`ATLASSIAN_API_TOKEN`** only if `JIRA_API_TOKEN` is unset.
 4. Apply **caller-supplied** `jira-base-url` / `jira-api-token` when non-empty (wins over files and env).
 
-If either value is still missing, warn the caller and return `{ success: false, error: "credentials missing" }`. Do **not** ask the user to paste the token.
+If either value is still missing, return `{ success: false, error: "credentials missing", user_message: "Jira credentials not found — set JIRA_BASE_URL and JIRA_API_TOKEN in env or in ~/.config/ai-garage/jira.env (or <project>/.config/ai-garage/jira.env). See ai-garage-jira README." }`. The caller **must** surface `user_message` to the user as a one-liner before continuing. Do **not** ask the user to paste the token.
 
 ### 2. Dispatch by mode
 
@@ -43,9 +43,9 @@ Accept a `mode` parameter: **`create-subtasks`** or **`transition`**.
 2. **Build description** from the phase items. Use the WBS item text as the description body.
 3. **Create the sub-task** using the `POST /rest/api/2/issue` endpoint — see **[REFERENCE.md — Create sub-task](references/REFERENCE.md)**.
 4. **Extract** the created issue key from the response (`key` field).
-5. On **error** (non-201 response): log a warning with the HTTP status and error message. Do not stop — continue to the next phase.
+5. On **error** (non-201 response): capture a one-line `user_message` of the form `Jira sub-task create failed for <phase-key>: HTTP <status> — <error>`. Do not stop — continue to the next phase.
 
-**Output:** A list of `{ phase-key, jira-key }` for successfully created sub-tasks, plus any warnings.
+**Output:** A list of `{ phase-key, jira-key }` for successfully created sub-tasks, plus any per-phase `user_message` warnings the caller must surface.
 
 ---
 
