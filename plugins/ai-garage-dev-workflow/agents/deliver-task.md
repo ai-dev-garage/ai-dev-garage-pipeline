@@ -17,10 +17,12 @@ outputs:
   - workflow state files in .ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/
 effort_level: medium
 model: inherit
+tools: Agent, Bash, Edit, Glob, Grep, Read, Skill, Write, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList
 constraints:
   - always run state detection before any phase
   - do not skip the execution mode gate before Phase 3
   - WBS is the source of truth for all phase state
+  - requires nested Agent dispatch to delegate phase agents (analyze, plan, implement, finalize); must be invokable in a context where the Agent tool is available
 ---
 
 # Deliver task

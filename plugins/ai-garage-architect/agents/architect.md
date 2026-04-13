@@ -19,9 +19,11 @@ outputs:
   - draft ADR(s) + updated index at user-approved path
   - verification-command result (if configured)
 model: inherit
+tools: Agent, Bash, Edit, Glob, Grep, Read, Skill, Write, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList
 constraints:
   - do not write artifacts until the user confirms the synthesis
   - never overwrite an existing file without explicit user confirmation
+  - requires nested Agent dispatch to fan out architecture-researcher and architecture-synthesizer subagents; must be invokable in a context where the Agent tool is available
 ---
 
 # Architect

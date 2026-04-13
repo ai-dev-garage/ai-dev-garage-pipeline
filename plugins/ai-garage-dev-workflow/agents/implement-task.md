@@ -19,6 +19,9 @@ outputs:
   - .ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/{PHASE-KEY}/work-report.md
 effort_level: high
 model: inherit
+tools: Agent, Bash, Edit, Glob, Grep, Read, Skill, Write, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList
+constraints:
+  - requires nested Agent dispatch to spawn parallel sub-agents for [PARALLEL:group] items; must be invokable in a context where the Agent tool is available
 ---
 
 # Implement task

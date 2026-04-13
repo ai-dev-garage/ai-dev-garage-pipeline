@@ -58,6 +58,25 @@ Workflow steps should **name skills in prose** (“Use the **normalize-intent** 
 - Delegate secret handling to **skills** that use: named **environment variables**, optional **`assets/<skill-name>.template.env`** (placeholders only, safe to commit), and user-local **`${CLAUDE_PLUGIN_ROOT}/skills/<skill-name>/<skill-name>.env`** with documented precedence (env → project bundle → plugin bundle unless stated otherwise).
 - In **Rules**, tell the model to read config from those mechanisms only — not from user messages containing credentials.
 
+## Nested agent dispatch
+
+Agents that **spawn other agents** (orchestrators with subagent fan-out, phase routers, parallel workers) **must declare the `Agent` tool explicitly** in frontmatter. Tool inheritance for subagents is not guaranteed across harnesses: an orchestrator invoked via the Agent tool may run in a context where `Agent` is not automatically inherited, and nested dispatch then fails at runtime.
+
+Minimum required form:
+
+```yaml
+tools: Agent, Bash, Edit, Glob, Grep, Read, Skill, Write, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList
+```
+
+Also add a constraint line that names the requirement so it surfaces in the picker and is enforced during review:
+
+```yaml
+constraints:
+  - requires nested Agent dispatch to <purpose>; must be invokable in a context where the Agent tool is available
+```
+
+Leaf subagents (those that do not spawn others) should omit `Agent` from `tools` when they declare `tools` at all, to reduce the risk of accidental nested dispatch from a leaf.
+
 ## Plugin boundary
 
 - No required references to source assets outside the plugin’s own tree.
@@ -133,4 +152,5 @@ Plugins are discovered automatically; project-local overrides take precedence. *
 - [ ] Rules state persistence / review gate and **parameterized** path resolution (bundle roots), not a single hardcoded install path
 - [ ] **Secrets:** no solicitation in chat; integrations use env / bundle `.env` conventions (see **Secrets & credentials** above)
 - [ ] **Plugin boundary:** no out-of-plugin source deps; no cross-plugin hard deps (see **Plugin boundary** above)
+- [ ] **Nested dispatch:** if the agent spawns subagents, `tools` includes `Agent` and a matching constraint is declared (see **Nested agent dispatch** above)
 - [ ] Clear boundary vs skill and vs command
