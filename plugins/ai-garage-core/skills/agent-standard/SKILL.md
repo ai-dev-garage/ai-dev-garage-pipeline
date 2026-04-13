@@ -33,6 +33,7 @@ Apply to the target agent’s **`*.md`** file:
 5. **`references/` vs `assets/`** for any bundled agent package — put material in **`references/`** when it affects reasoning, decision order, or output shape; put material in **`assets/`** when it is optional, large, example-heavy, schema/template, or lookup-style. See [REFERENCE.md](references/REFERENCE.md) for details.
 6. **Secrets and credentials:** The agent and any skills it delegates to must **never** ask the user to paste passwords, API tokens, or private keys in chat. **Rules** must point users to **environment variables** and/or **local gitignored** env files (e.g. `${CLAUDE_PLUGIN_ROOT}/skills/<skill-name>/<skill-name>.env`). Runtimes may read secrets from env or local gitignored files only. See [REFERENCE.md](references/REFERENCE.md) ("Secrets & credentials").
 7. **Plugin boundary:** Agents authored within a plugin must not require assets **outside** that plugin’s tree as source dependencies. **Cross-plugin** hard dependencies are unsupported for now. See [REFERENCE.md](references/REFERENCE.md) ("Plugin boundary").
+8. **Nested agent dispatch:** Agents that spawn other agents (orchestrators, fan-out workers, phase routers) **must declare the `Agent` tool explicitly** in `tools` frontmatter and state the requirement in `constraints`. Tool inheritance for subagents is not guaranteed across harnesses. See [REFERENCE.md](references/REFERENCE.md) ("Nested agent dispatch").
 
 ## Mode
 
