@@ -35,8 +35,8 @@ $ARGUMENTS
    | Plugin | Doctor command |
    |---|---|
    | `ai-garage-jira` | `/ai-garage-jira:doctor` |
-   | `ai-garage-assistant` | `/ai-garage-assistant:doctor` (skip if not installed — follow-up work) |
-   | `ai-garage-architect` | `/ai-garage-architect:doctor` (skip if not installed — follow-up work) |
+   | `ai-garage-assistant` | `/ai-garage-assistant:doctor` |
+   | `ai-garage-architect` | `/ai-garage-architect:doctor` |
 
    If a plugin is listed in `plugins.installed` but its doctor command is not resolvable, print `WARN: <plugin> registered but its doctor command is not installed` and continue.
 

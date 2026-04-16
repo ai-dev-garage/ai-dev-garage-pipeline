@@ -1,6 +1,6 @@
 {
   "name": "ai-garage-architect",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Architect / techlead assistant — advisory (discuss trade-offs, review) and producer (generate ADRs) modes with parallel researcher fan-out. Reads existing arch docs (local) or works greenfield.",
   "author": {
     "name": "AI Dev Garage"

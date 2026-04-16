@@ -319,6 +319,50 @@ def _validate(data: Any) -> list[dict]:
         if not isinstance(ndbid, str) or not ndbid.strip():
             err("integrations.assistant.notion-database-id", "must be a non-empty string")
 
+    for k in (
+        "integrations.assistant.notion-mcp-connector",
+        "integrations.assistant.notion-parent-page-id",
+        "integrations.assistant.session-prefix",
+    ):
+        v = val(k)
+        if v is not None and not (isinstance(v, str) and v.strip()):
+            err(k, "must be a non-empty string or null")
+
+    tags = val("integrations.assistant.default-tags")
+    if tags is not None:
+        if not isinstance(tags, list) or not all(isinstance(s, str) and s.strip() for s in tags):
+            err("integrations.assistant.default-tags", "must be a list of non-empty strings")
+
+    sources = val("integrations.architect.doc-sources")
+    if sources is not None:
+        if not isinstance(sources, list):
+            err("integrations.architect.doc-sources", "must be a list")
+        else:
+            for i, s in enumerate(sources):
+                if not isinstance(s, dict):
+                    err(f"integrations.architect.doc-sources[{i}]", "must be a mapping")
+                    continue
+                t = s.get("type")
+                if t not in ("local", "github", "confluence"):
+                    err(f"integrations.architect.doc-sources[{i}].type", "must be one of: local, github, confluence")
+                if t == "local":
+                    p = s.get("path")
+                    if not isinstance(p, str) or not p.strip():
+                        err(f"integrations.architect.doc-sources[{i}].path", "must be a non-empty string")
+
+    fmt = val("integrations.architect.default-output.format")
+    if fmt is not None and fmt not in ("adoc", "md"):
+        err("integrations.architect.default-output.format", "must be 'adoc' or 'md' or null")
+
+    for k in (
+        "integrations.architect.default-output.adr-path",
+        "integrations.architect.default-output.diagram-path",
+        "integrations.architect.verification-command",
+    ):
+        v = val(k)
+        if v is not None and not (isinstance(v, str) and v.strip()):
+            err(k, "must be a non-empty string or null")
+
     installed = val("plugins.installed")
     if installed is not None:
         if not isinstance(installed, list) or not all(isinstance(s, str) and s.strip() for s in installed):

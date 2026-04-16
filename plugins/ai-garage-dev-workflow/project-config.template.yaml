@@ -49,3 +49,28 @@ integrations:
       phase-implemented: "Need Review"  # implement-task finishes
       review-started: "In Review"       # Code quality review begins
       phase-ready: "Ready"              # Quality review passes / phase DONE in WBS
+
+  architect:
+    # Where existing architecture docs live. Loader globs **/*.{md,adoc,puml,txt}
+    # under each source. Only `type: local` is supported in v1; github/confluence
+    # are reserved. All keys are optional; empty list == greenfield mode.
+    doc-sources: []
+    # - type: local
+    #   path: src/docs
+
+    # Where new architecture artifacts land when produced.
+    default-output:
+      format: null                    # adoc | md (matches your existing ADR style)
+      adr-path: null                  # e.g. src/docs/asciidoc/index/technical/architecture-decisions
+      diagram-path: null              # reserved; not used in v1
+
+    # Optional shell command run from PROJECT_ROOT after an artifact write to
+    # verify the project still builds its docs. Non-zero exit blocks "done".
+    verification-command: null        # e.g. "./gradlew publishToConfluence --convertOnly"
+
+plugins:
+  # Plugins this project has run `/configure` for. Populated by each plugin's
+  # configure command via config-merger add-to-list. Used by the aggregator
+  # (/ai-dev-garage:configure, /ai-dev-garage:doctor) to decide which plugin
+  # flows to invoke.
+  installed: []

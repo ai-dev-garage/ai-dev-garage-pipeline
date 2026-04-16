@@ -1,6 +1,8 @@
 # ai-garage-assistant — project-level config template
 # Copy relevant keys into {PROJECT_ROOT}/.ai-dev-garage/project-config.yaml
-# (or the global ~/.config/ai-garage/config.yaml) and fill in values.
+# (or the canonical global ~/.ai-dev-garage/config.yaml) and fill in values.
+# `/ai-garage-assistant:configure` writes through ai-garage-core:config-merger
+# so you do not have to hand-edit this file.
 
 integrations:
   assistant:
