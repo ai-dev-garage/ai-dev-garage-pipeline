@@ -2,13 +2,13 @@
 
 ## Credential precedence (overlay order)
 
-Identical to `jira-item-fetcher`. Apply in order; **later** rows override **earlier** rows **per key** (URL and token independently).
+Identical to `jira-item-fetcher`. Apply in order; **later** rows override **earlier** rows **per key** (URL and token independently). Within each file layer, the **canonical** path is preferred and the **legacy** path is a read-only fallback (triggers a one-line deprecation warning).
 
 | Step | Source | Keys |
 |------|--------|------|
-| 1 | Global env file | `~/.config/ai-garage/jira.env` → `JIRA_BASE_URL`, `JIRA_API_TOKEN` |
-| 2 | Project env file | `{PROJECT_ROOT}/.config/ai-garage/jira.env` (same keys) |
-| 3 | Process environment | `JIRA_BASE_URL`, `JIRA_API_TOKEN`; token fallback `ATLASSIAN_API_TOKEN` |
+| 1 | Global env file | canonical `~/.ai-dev-garage/secrets.env` → legacy `~/.config/ai-garage/jira.env`; reads `JIRA_BASE_URL`, `JIRA_API_TOKEN` |
+| 2 | Project env file | canonical `{PROJECT_ROOT}/.ai-dev-garage/secrets.env` → legacy `{PROJECT_ROOT}/.config/ai-garage/jira.env` |
+| 3 | Process environment | `JIRA_BASE_URL`, `JIRA_API_TOKEN`; token fallbacks `ATLASSIAN_API_TOKEN`, then `CONFLUENCE_API_TOKEN` (only if `JIRA_API_TOKEN` is unset) |
 | 4 | Caller | `jira-base-url`, `jira-api-token` |
 
 ## Create sub-task

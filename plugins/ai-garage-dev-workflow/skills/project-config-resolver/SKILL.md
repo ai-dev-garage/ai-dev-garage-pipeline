@@ -16,12 +16,16 @@ argument-hint: key names to resolve (e.g. build-command, docs-path, jira)
 
 ### 1. Locate the config file
 
-Search for the config file in order:
+Resolve the target path by calling **`ai-garage-core:config-merger`** with subcommand `path` (do **not** read YAML directly — the helper owns path resolution and format preservation). Precedence applied by the helper:
 
-1. `{PROJECT_ROOT}/.ai-dev-garage/project-config.yaml`
-2. `~/.config/ai-garage/config.yaml` (global fallback)
+1. `$AI_GARAGE_CONFIG` env override (absolute path).
+2. `{PROJECT_ROOT}/.ai-dev-garage/project-config.yaml` — **canonical** project path.
+3. `~/.ai-dev-garage/config.yaml` — **canonical** global fallback (when no project root or no project file).
+4. **Legacy fallback** (read-only; triggers a one-line deprecation warning on stderr):
+   - `~/.config/ai-garage/config.yaml`
+   - `{PROJECT_ROOT}/.ai-dev-garage/config.yaml` (filename variant)
 
-If neither exists, create `{PROJECT_ROOT}/.ai-dev-garage/project-config.yaml` with empty sections and proceed to self-recovery for requested keys.
+If no config exists yet, proceed to self-recovery for requested keys; `config-merger set` will create the canonical file on first write.
 
 ### 2. Parse caller request
 
@@ -54,7 +58,7 @@ Resolve only the requested keys. Callers must handle a `null` return gracefully.
 
 For each requested key:
 
-1. Read the value from the config file.
+1. Read the value with `config-merger get <key-path>`. Exit code `2` means miss — treat as absent.
 2. If present and non-empty, validate it (path keys: verify path exists on disk; other keys: verify non-placeholder).
 3. If valid, return the value.
 4. If absent, empty, or invalid, enter **self-recovery** for that key.
@@ -63,17 +67,19 @@ For each requested key:
 
 Ask the user one question at a time. Wait for their answer before proceeding.
 
+All writes go through **`config-merger set <key-path> <value>`** (preserves comments + unknown keys + atomic write). Do **not** hand-edit YAML.
+
 For **path-based keys** (`docs-path`):
 - Ask if the resource exists. If no, return `null` with a note.
-- If yes, ask for the absolute path. Validate on disk. Write back to config on success.
+- If yes, ask for the absolute path. Validate on disk. `config-merger set project.docs-path <absolute-path>` on success.
 
 For **command keys** (`build-command`, `test-command`):
-- Ask the user for the command. Write back to config.
+- Ask the user for the command. `config-merger set project.build-command '<value>'`.
 
 For **credential keys** (`integrations.jira.api-token`):
 - Check environment variable first (`JIRA_API_TOKEN`).
-- Then check global config `~/.config/ai-garage/config.yaml`.
-- If still missing, ask the user. Write to project config (or suggest env var for secrets).
+- Then check global config via `config-merger --scope global get integrations.jira.api-token`.
+- If still missing, ask the user. Prefer instructing them to place the token in `~/.ai-dev-garage/secrets.env` (canonical) or `<project>/.ai-dev-garage/secrets.env`; only fall back to writing to project config if they insist.
 
 For **stack keys** (`project.stack`):
 - Auto-detect from project files at `PROJECT_ROOT`:
@@ -115,4 +121,5 @@ Return resolved values to the caller. For any value that could not be resolved, 
 - **Never overwrite existing valid values.** Only write keys that were missing or broken.
 - **Never block the workflow.** Optional values return `null` + note rather than stopping.
 - **Credential precedence:** env var > project config > global config > interactive recovery.
+- **Never hand-edit YAML.** All reads/writes go through `ai-garage-core:config-merger` to preserve comments, unknown keys, and atomic write guarantees.
 - Config schema and defaults: see [REFERENCE.md](references/REFERENCE.md).

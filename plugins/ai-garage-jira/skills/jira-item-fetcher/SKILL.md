@@ -18,10 +18,18 @@ argument-hint: Jira ticket key or URL (e.g. PROJ-1234)
 
 Build **`JIRA_BASE_URL`** (no trailing slash) and **`JIRA_API_TOKEN`** by **overlay** (later steps override earlier ones for each field independently). See **[REFERENCE.md — Credential precedence](references/REFERENCE.md)**.
 
-1. Read **`~/.config/ai-garage/jira.env`** (`KEY=value` lines; skip `#` comments). Users can create it by copying **`jira.template.env`** from **`${CLAUDE_PLUGIN_ROOT}/`** in the pipeline repo.
-2. If **`PROJECT_ROOT`** is set, read **`{PROJECT_ROOT}/.config/ai-garage/jira.env`** the same way (overrides global file for keys it defines).
-3. Apply **process environment**: `JIRA_BASE_URL`, `JIRA_API_TOKEN`; use **`ATLASSIAN_API_TOKEN`** only if `JIRA_API_TOKEN` is unset.
-4. Apply **caller-supplied** `jira-base-url` / `jira-api-token` when non-empty (wins over files and env).
+For each env-file layer, read the **canonical** path first; if missing, fall back to the **legacy** path. When a legacy file is hit, emit a one-line stderr deprecation note suggesting migration to the canonical path.
+
+1. **Global env file:**
+   - Canonical: `~/.ai-dev-garage/secrets.env`
+   - Legacy: `~/.config/ai-garage/jira.env`
+2. **Project env file** (if `PROJECT_ROOT` is set):
+   - Canonical: `{PROJECT_ROOT}/.ai-dev-garage/secrets.env`
+   - Legacy: `{PROJECT_ROOT}/.config/ai-garage/jira.env`
+3. **Process environment:** `JIRA_BASE_URL`, `JIRA_API_TOKEN`; use **`ATLASSIAN_API_TOKEN`** only if `JIRA_API_TOKEN` is unset. If token is still unset and `CONFLUENCE_API_TOKEN` is present in the environment, use it as a last-resort fallback (same Atlassian account, same token).
+4. **Caller-supplied** `jira-base-url` / `jira-api-token` when non-empty (wins over files and env).
+
+Env-file format: `KEY=value` lines, `#` comments skipped, no spaces around `=`. Start from **`jira.template.env`** in the plugin root — copy to either canonical path and edit.
 
 **Do not** ask the user to paste the API token into chat. If either value is still missing after this pass, stop and use the **“When credentials are missing”** reply from **[REFERENCE.md](references/REFERENCE.md)**.
 

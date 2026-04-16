@@ -4,28 +4,38 @@
 
 Jira Cloud REST calls need a **base URL** (e.g. `https://your-site.atlassian.net`) and an **API token** from Atlassian: [Create an API token](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/).
 
-**Do not commit secrets.** Add `jira.env` to `.gitignore` in any repo where you place it under `.config/ai-garage/` (the pipeline `.gitignore` already ignores the filename repo-wide).
+**Do not commit secrets.** Add the env file name to `.gitignore` in any repo where you commit one into the working tree (the pipeline `.gitignore` already ignores `secrets.env` and the legacy `jira.env` repo-wide).
 
-**Template (committed):** copy **`${CLAUDE_PLUGIN_ROOT}/jira.template.env`** from your pipeline checkout to **`jira.env`** in the target directory, then edit. New optional keys may appear in the template as the extension evolves.
+**Template (committed):** copy **`${CLAUDE_PLUGIN_ROOT}/jira.template.env`** to one of the canonical paths below and rename to **`secrets.env`**. New optional keys may appear in the template as the extension evolves.
+
+### Canonical paths (preferred)
+
+- **Global:** `~/.ai-dev-garage/secrets.env`
+- **Project:** `{PROJECT_ROOT}/.ai-dev-garage/secrets.env`
+
+### Legacy paths (still read; deprecation warning on hit)
+
+- **Global legacy:** `~/.config/ai-garage/jira.env`
+- **Project legacy:** `{PROJECT_ROOT}/.config/ai-garage/jira.env`
 
 ## Credential precedence (overlay order)
 
-Apply in order; **later** rows override **earlier** rows **per key** (URL and token independently).
+Apply in order; **later** rows override **earlier** rows **per key** (URL and token independently). Within each file layer, the **canonical** path is preferred and the **legacy** path is a read-only fallback.
 
 | Step | Source | Keys |
 |------|--------|------|
-| 1 | Global env file | `~/.config/ai-garage/jira.env` → `JIRA_BASE_URL`, `JIRA_API_TOKEN` |
-| 2 | Project env file | `{PROJECT_ROOT}/.config/ai-garage/jira.env` (same keys) |
-| 3 | Process environment | `JIRA_BASE_URL`, `JIRA_API_TOKEN`; token fallback `ATLASSIAN_API_TOKEN` |
+| 1 | Global env file | canonical `~/.ai-dev-garage/secrets.env` → legacy `~/.config/ai-garage/jira.env`; reads `JIRA_BASE_URL`, `JIRA_API_TOKEN` |
+| 2 | Project env file | canonical `{PROJECT_ROOT}/.ai-dev-garage/secrets.env` → legacy `{PROJECT_ROOT}/.config/ai-garage/jira.env` |
+| 3 | Process environment | `JIRA_BASE_URL`, `JIRA_API_TOKEN`; token fallbacks `ATLASSIAN_API_TOKEN`, `CONFLUENCE_API_TOKEN` (in that order; used only if `JIRA_API_TOKEN` is unset) |
 | 4 | Caller | `jira-base-url`, `jira-api-token` |
 
 Example: token only in global file, URL only in `JIRA_BASE_URL` env → both are used after overlay.
 
-## Env file format (`jira.env`)
+## Env file format (`secrets.env` / legacy `jira.env`)
 
 Plain text, one variable per line (`KEY=value`). Lines starting with `#` are comments. Optional quotes around values.
 
-Start from **`jira.template.env`** at the extension root (`${CLAUDE_PLUGIN_ROOT}/` in the pipeline repo); only **`JIRA_BASE_URL`** and **`JIRA_API_TOKEN`** are required for **jira-item-fetcher** today.
+Start from **`jira.template.env`** at the plugin root (`${CLAUDE_PLUGIN_ROOT}/` in the pipeline repo); only **`JIRA_BASE_URL`** and **`JIRA_API_TOKEN`** are required for **jira-item-fetcher** today.
 
 No spaces around `=`. Strip trailing whitespace from values.
 
@@ -34,7 +44,8 @@ No spaces around `=`. Strip trailing whitespace from values.
 Reply with a **single** short block for the user (no token prompt):
 
 - Jira lookups need a **base URL** and **API token**.
-- Set **`JIRA_BASE_URL`** and **`JIRA_API_TOKEN`** in the environment, **or** copy **`jira.template.env`** to **`~/.config/ai-garage/jira.env`** or **`<project>/.config/ai-garage/jira.env`** and fill in values.
+- Set **`JIRA_BASE_URL`** and **`JIRA_API_TOKEN`** in the environment, **or** copy **`jira.template.env`** to **`~/.ai-dev-garage/secrets.env`** (global) or **`<project>/.ai-dev-garage/secrets.env`** (project) and fill in values.
+- Legacy locations (`~/.config/ai-garage/jira.env`, `<project>/.config/ai-garage/jira.env`) are still read but will be migrated on the next run.
 - See Atlassian’s docs to create a token; keep the file out of git.
 
 Extension overview: **[README.md](../../../README.md)** (this extension folder in the pipeline repo).
