@@ -14,7 +14,7 @@ argument-hint: subcommand (get | set | merge-fragment | validate) + key path or 
 
 ## Input
 
-- `subcommand` — one of `get`, `set`, `merge-fragment`, `validate`, `path`.
+- `subcommand` — one of `get`, `set`, `merge-fragment`, `add-to-list`, `validate`, `path`.
 - `--file <path>` — target config file. Defaults to the resolved project config path (see Rules).
 - Subcommand-specific args. See [references/REFERENCE.md](references/REFERENCE.md) for the full CLI contract.
 
@@ -37,6 +37,7 @@ The helper is at `${CLAUDE_PLUGIN_ROOT}/skills/config-merger/scripts/config_merg
 - `get <key-path>` — read one key (e.g. `integrations.jira.sync-phases`). Returns the value or exits 2 on miss.
 - `set <key-path> <value>` — write one scalar key. Value is parsed as YAML (so `true`, `42`, `"a string"`, `null` all work). Creates missing parent maps.
 - `merge-fragment <fragment-file>` — deep-merge a YAML fragment into the target file with **base-wins** semantics (existing user values are preserved; fragment fills only missing keys). Unknown keys already in the target are kept. Use this for first-run seeding and for plugin fragments that introduce new integrations; use explicit `set` calls when the caller actually wants to overwrite.
+- `add-to-list <key-path> <value>` — idempotently append `value` to the list at `key-path`. Creates the list (and any missing parent maps) if absent. No-op if the value is already in the list. Use this for `plugins.installed` and any other collection that a plugin owns (e.g., `integrations.architect.doc-sources`).
 - `validate` — run schema checks against the known config schema. Caller should read the JSON payload and act on any errors.
 - `path [--scope project|global]` — resolve and print the canonical config path for the current environment without reading it. Used by `doctor`.
 

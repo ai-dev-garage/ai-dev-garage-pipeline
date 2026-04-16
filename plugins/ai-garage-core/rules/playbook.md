@@ -5,6 +5,7 @@ Available rules:
 | Rule Path | Keywords / Triggers | Always-on |
 |-----------|-------------------|-----------|
 | `{{PLUGIN_ROOT}}/rules/garage-runtime.md` | garage, runtime, classify, plan, execute, review, summarize, memory, project overrides | Yes |
+| `{{PLUGIN_ROOT}}/rules/configure-nudge.md` | configure, first-run, plugins.installed, project-config.yaml, doctor | Yes |
 | `{{PLUGIN_ROOT}}/rules/secrets-env-and-gitignore.md` | secrets, env, .env, gitignore, credentials, tokens, api key | No |
 
 **Enforcement:**

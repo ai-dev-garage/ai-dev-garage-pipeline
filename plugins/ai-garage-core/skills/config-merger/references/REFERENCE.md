@@ -13,6 +13,7 @@ python3 config_merger.py <subcommand> [options]
 | `get` | `<key-path>` | 0 hit, 2 miss, 1 error | scalar or JSON |
 | `set` | `<key-path> <value>` | 0 success, 1 error | (empty) |
 | `merge-fragment` | `<fragment-file>` | 0 success, 1 error | (empty) |
+| `add-to-list` | `<key-path> <value>` | 0 success, 1 error | (empty) |
 | `validate` | (none) | 0 always | JSON `{ok, errors}` |
 | `path` | `[--scope project\|global]` | 0 success, 1 error | absolute path |
 
@@ -45,6 +46,15 @@ Values are parsed as YAML scalars so these all work:
 - `set integrations.assistant.default-tags '[work, ai]'` → list
 
 Use `--raw-string` to force string interpretation.
+
+## List append (`add-to-list`)
+
+Idempotent append — no-op if the value is already present. Errors when the existing key holds a non-list, non-null value. Typical callers:
+
+- `add-to-list plugins.installed ai-garage-jira` — plugin `configure` commands register themselves once, without duplicating on re-runs.
+- `add-to-list project.stack java` — additive stack detection.
+
+Use `--raw-string` when the value contains characters that would otherwise parse as structured YAML (e.g., `"my-plugin: special"`).
 
 ## Path resolution (when `--file` omitted)
 
@@ -95,6 +105,7 @@ The helper uses `ruamel.yaml` when available (preserves comments on round-trip) 
 | `integrations.jira.sync-phases` | boolean |
 | `integrations.jira.transitions.*` | string or null |
 | `integrations.assistant.notion-database-id` | non-empty string (if non-null) |
+| `plugins.installed` | list of non-empty plugin-name strings (if present) |
 
 ## Dependencies
 
