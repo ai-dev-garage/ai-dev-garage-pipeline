@@ -319,6 +319,11 @@ def _validate(data: Any) -> list[dict]:
         if not isinstance(ndbid, str) or not ndbid.strip():
             err("integrations.assistant.notion-database-id", "must be a non-empty string")
 
+    installed = val("plugins.installed")
+    if installed is not None:
+        if not isinstance(installed, list) or not all(isinstance(s, str) and s.strip() for s in installed):
+            err("plugins.installed", "must be a list of non-empty plugin-name strings")
+
     return errors
 
 # ---- Command implementations --------------------------------------------
@@ -395,6 +400,46 @@ def cmd_merge_fragment(args) -> int:
     return 0
 
 
+def cmd_add_to_list(args) -> int:
+    """Idempotently append `value` to the list at `key_path`. Creates the list
+    (and any missing parent maps) if absent. No-op if `value` is already in the
+    list. Value is parsed as YAML so scalars, strings, and structured entries
+    all work; use `--raw-string` to force a literal string."""
+    read_path, is_legacy = _resolve_path(args.scope, _project_root(args.project_root), args.file)
+    write_path = _canonical_path(args.scope, _project_root(args.project_root), args.file)
+    if is_legacy:
+        print(
+            f"config-merger: migrating write target to canonical path {write_path}",
+            file=sys.stderr,
+        )
+    write_path.parent.mkdir(parents=True, exist_ok=True)
+    data = _yaml_load(read_path) if read_path.exists() else {}
+
+    if args.raw_string:
+        parsed: Any = args.value
+    else:
+        parsed = _yaml_loads(args.value)
+
+    existing = _get_keypath(data, args.key_path)
+    if existing is None:
+        new_list = [parsed]
+    elif isinstance(existing, list):
+        if parsed in existing:
+            return 0  # idempotent no-op
+        new_list = list(existing) + [parsed]
+    else:
+        print(
+            f"config-merger: cannot add-to-list at '{args.key_path}' — existing value is not a list "
+            f"(type={type(existing).__name__}).",
+            file=sys.stderr,
+        )
+        return 1
+
+    data = _set_keypath(data, args.key_path, new_list)
+    _yaml_dump(data, write_path)
+    return 0
+
+
 def cmd_validate(args) -> int:
     path, _ = _resolve_path(args.scope, _project_root(args.project_root), args.file)
     data = _yaml_load(path) if path.exists() else {}
@@ -435,6 +480,12 @@ def _build_parser() -> argparse.ArgumentParser:
     m = sub.add_parser("merge-fragment")
     m.add_argument("fragment_file")
     m.set_defaults(func=cmd_merge_fragment)
+
+    a = sub.add_parser("add-to-list", help="Idempotent append to a YAML list.")
+    a.add_argument("key_path")
+    a.add_argument("value")
+    a.add_argument("--raw-string", action="store_true", help="Force string interpretation of value.")
+    a.set_defaults(func=cmd_add_to_list)
 
     v = sub.add_parser("validate")
     v.set_defaults(func=cmd_validate)

@@ -1,6 +1,6 @@
 {
   "name": "ai-garage-assistant",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Personal assistant — on-demand session summaries, topic investigations, and quick capture; writes structured entries to a configurable Notion database.",
   "author": {
     "name": "AI Dev Garage"

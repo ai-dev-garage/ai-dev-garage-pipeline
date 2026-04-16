@@ -1,6 +1,6 @@
 {
   "name": "ai-garage-core",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "AI Dev Garage core — pipeline standards (skill, agent, command, rule), self-management commands, and shared runtime rules.",
   "author": {
     "name": "AI Dev Garage"
