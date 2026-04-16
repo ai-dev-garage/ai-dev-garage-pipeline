@@ -88,9 +88,16 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
   4. Call **jira-phase-sync** in `create-subtasks` mode with the task key as `parent-key`, the resolved `subtask-type`, and the phases list.
   5. For each returned `{ phase-key, jira-key }`, annotate the WBS phase header with `[jira:KEY]` — e.g., `### phase-1-domain-models [NOT STARTED] [jira:PROJ-456]`.
   6. Save the updated WBS.
-- **On failure:** Log a warning. Continue without annotations — the workflow is not blocked.
-- **Skip if:** Condition is false, or WBS already has all phases annotated.
-- **Output:** WBS annotated with `[jira:KEY]` per phase (or unchanged if skipped).
+- **User-visible diagnostics (mandatory):** Whenever step 4a is *skipped* or its sub-task creation *fails*, emit a single one-line message to the user stating the exact reason. Do not skip or fail silently. Use one of these message shapes:
+  - `Jira phase-sync skipped: task_source is '<value>' (need 'jira').`
+  - `Jira phase-sync skipped: integrations.jira.sync-phases is <value-or-unset> in .ai-dev-garage/project-config.yaml.`
+  - `Jira phase-sync skipped: ai-garage-jira plugin not installed.`
+  - `Jira phase-sync skipped: WBS has no phases matching '### phase-N-slug'.`
+  - `Jira phase-sync skipped: all phases already have [jira:KEY] annotations.`
+  - `Jira phase-sync failed: <error from skill>. Workflow continues without sub-tasks.`
+- **On failure:** Emit the failure diagnostic above, then continue without annotations — the workflow is not blocked.
+- **Skip if:** Condition is false, or WBS already has all phases annotated — **always** with the matching diagnostic line above.
+- **Output:** WBS annotated with `[jira:KEY]` per phase (or unchanged if skipped, with a user-visible reason).
 
 ### 5. Gate — Choose execution mode (mandatory before Phase 3)
 - **Goal:** Determine implementation pacing.
