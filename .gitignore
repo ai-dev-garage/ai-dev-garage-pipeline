@@ -5,7 +5,8 @@
 # Claude Code — local symlink/copy from Garage install (do not commit)
 .claude/
 
-# Jira extension — local credentials (global or project .ai-dev-garage)
+# AI Dev Garage — local credentials (global or project .ai-dev-garage)
+secrets.env
 jira.env
 
 .idea/

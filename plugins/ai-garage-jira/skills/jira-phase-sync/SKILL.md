@@ -17,12 +17,14 @@ argument-hint: mode (create-subtasks | transition), parent key + phases or subta
 
 Build **`JIRA_BASE_URL`** (no trailing slash) and **`JIRA_API_TOKEN`** using the same overlay precedence as `jira-item-fetcher`. See **[REFERENCE.md — Credential precedence](references/REFERENCE.md)**.
 
-1. Read **`~/.config/ai-garage/jira.env`** (`KEY=value` lines; skip `#` comments).
-2. If **`PROJECT_ROOT`** is set, read **`{PROJECT_ROOT}/.config/ai-garage/jira.env`** (overrides global file for keys it defines).
-3. Apply **process environment**: `JIRA_BASE_URL`, `JIRA_API_TOKEN`; use **`ATLASSIAN_API_TOKEN`** only if `JIRA_API_TOKEN` is unset.
+For each env-file layer, read the canonical path first; fall back to the legacy path and emit a one-line deprecation warning on hit.
+
+1. **Global env file:** canonical `~/.ai-dev-garage/secrets.env` → legacy `~/.config/ai-garage/jira.env`.
+2. **Project env file** (if `PROJECT_ROOT` set): canonical `{PROJECT_ROOT}/.ai-dev-garage/secrets.env` → legacy `{PROJECT_ROOT}/.config/ai-garage/jira.env`.
+3. Apply **process environment**: `JIRA_BASE_URL`, `JIRA_API_TOKEN`; token fallbacks `ATLASSIAN_API_TOKEN`, then `CONFLUENCE_API_TOKEN` (used only if `JIRA_API_TOKEN` is unset).
 4. Apply **caller-supplied** `jira-base-url` / `jira-api-token` when non-empty (wins over files and env).
 
-If either value is still missing, return `{ success: false, error: "credentials missing", user_message: "Jira credentials not found — set JIRA_BASE_URL and JIRA_API_TOKEN in env or in ~/.config/ai-garage/jira.env (or <project>/.config/ai-garage/jira.env). See ai-garage-jira README." }`. The caller **must** surface `user_message` to the user as a one-liner before continuing. Do **not** ask the user to paste the token.
+If either value is still missing, return `{ success: false, error: "credentials missing", user_message: "Jira credentials not found — set JIRA_BASE_URL and JIRA_API_TOKEN in env or place them in ~/.ai-dev-garage/secrets.env (or <project>/.ai-dev-garage/secrets.env). See ai-garage-jira README." }`. The caller **must** surface `user_message` to the user as a one-liner before continuing. Do **not** ask the user to paste the token.
 
 ### 2. Dispatch by mode
 

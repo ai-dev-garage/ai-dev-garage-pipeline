@@ -21,12 +21,12 @@ $ARGUMENTS
 
 2. **Resolve target project**
    - Parse `project=<path>` from user input. If present, use it as `PROJECT_ROOT`; otherwise use the workspace root.
-   - Set `CONFIG_PATH` = `<PROJECT_ROOT>/.ai-dev-garage/project-config.yaml`.
+   - Resolve `CONFIG_PATH` by invoking the **`ai-garage-core:config-merger`** skill with subcommand `path --scope project`. This returns the canonical `<PROJECT_ROOT>/.ai-dev-garage/project-config.yaml` and handles legacy-path detection transparently.
    - Set `TEMPLATE_PATH` = `${CLAUDE_PLUGIN_ROOT}/project-config.template.yaml`.
 
 3. **Load current state**
-   - If `CONFIG_PATH` exists, load it. Otherwise inform the user that a new file will be created from the template and create `<PROJECT_ROOT>/.ai-dev-garage/` if missing.
-   - Read `TEMPLATE_PATH` to know the full schema and defaults.
+   - If `CONFIG_PATH` exists, load it. Otherwise inform the user that a new file will be created and ensure `<PROJECT_ROOT>/.ai-dev-garage/` exists (`config-merger set` will create both the directory and the file on first write).
+   - Read `TEMPLATE_PATH` to know the full schema and defaults. **Do not** copy the template into place manually — instead, merge it into the target via `config-merger merge-fragment <TEMPLATE_PATH>` so existing comments/keys are preserved and the write is atomic.
 
 4. **Parse section filter**
    - Parse `section=<name>` from user input. Supported values: `project`, `models`, `jira`, `jira-sync`, `all` (default).
@@ -58,8 +58,8 @@ $ARGUMENTS
 
    - Ask: "Use Jira integration? (yes / no / skip)"
    - If **yes:**
-     - `integrations.jira.base-url` — must start with `https://`. If already in `jira.env`, note that and skip.
-     - `integrations.jira.api-token` — **do not prompt to paste**. Instead, instruct the user to set `JIRA_API_TOKEN` env var or place it in `~/.config/ai-garage/jira.env` or `<project>/.config/ai-garage/jira.env`. Point them at the template in the ai-garage-jira plugin root.
+     - `integrations.jira.base-url` — must start with `https://`. If already in `secrets.env`, note that and skip.
+     - `integrations.jira.api-token` — **do not prompt to paste**. Instead, instruct the user to set `JIRA_API_TOKEN` env var or place it in `~/.ai-dev-garage/secrets.env` (canonical global) or `<project>/.ai-dev-garage/secrets.env` (project). Legacy paths (`~/.config/ai-garage/jira.env`, `<project>/.config/ai-garage/jira.env`) are still read but deprecated. Point them at the template in the ai-garage-jira plugin root.
    - If **no / skip:** leave null.
 
 8. **Section: jira-sync** (skip if section filter excludes; also skip if jira base-url is unset)
@@ -80,9 +80,9 @@ $ARGUMENTS
    - If **no:** set `integrations.jira.sync-phases: false` (explicit opt-out, prevents future nudges).
 
 9. **Write the result**
-   - Merge the updated values into the existing `CONFIG_PATH` content (preserve comments and unrelated keys).
-   - If the file was newly created, start from `TEMPLATE_PATH` and fill in user-provided values.
-   - Write the file.
+   - Persist every user-confirmed value via `ai-garage-core:config-merger` subcommand `set <key-path> <value>` — this preserves comments, keeps unknown keys intact, and writes atomically.
+   - On a first-run where the file does not yet exist, call `merge-fragment` against `TEMPLATE_PATH` first to seed the shape, then apply per-key `set` calls for user answers.
+   - After the last write, run `config-merger validate` and surface any returned errors to the user before moving on.
 
 10. **Final summary**
     - List what changed (key: old -> new).
@@ -92,7 +92,7 @@ $ARGUMENTS
 ## Rules
 
 - **One question at a time.** Wait for the user's answer before proceeding.
-- **Never write secrets to `project-config.yaml`.** API tokens must come from env vars or `jira.env` files.
-- **Preserve unknown keys** already in the config file (do not delete things this command does not know about).
+- **Never write secrets to `project-config.yaml`.** API tokens must come from env vars or `secrets.env` files (canonical `~/.ai-dev-garage/secrets.env` or project-level `<project>/.ai-dev-garage/secrets.env`; legacy `jira.env` paths are still read but deprecated).
+- **Never hand-edit YAML.** All reads/writes go through `ai-garage-core:config-merger`; it preserves comments, keeps unknown keys, and writes atomically.
 - **Validate paths on disk** before writing them.
 - Use the `project-config-resolver` skill's existing validation rules — do not duplicate logic.

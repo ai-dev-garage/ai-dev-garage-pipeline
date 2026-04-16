@@ -1,11 +1,18 @@
 # AI Dev Garage — project configuration template
 #
-# Copy this file to `<PROJECT_ROOT>/.ai-dev-garage/project-config.yaml` and edit.
-# All keys are optional. The `project-config-resolver` skill reads this file
-# lazily; missing values are asked for interactively when first needed.
+# Copy this file to `<PROJECT_ROOT>/.ai-dev-garage/project-config.yaml` and edit
+# (or let `/configure` merge it for you). All keys are optional. The
+# `project-config-resolver` skill reads this file lazily; missing values are
+# asked for interactively when first needed.
 #
-# Resolution order (per key): project file -> global (~/.config/ai-garage/config.yaml)
-# -> environment variable (for credentials) -> interactive self-recovery.
+# Resolution order (per key):
+#   1. project file: <PROJECT_ROOT>/.ai-dev-garage/project-config.yaml
+#   2. global file:  ~/.ai-dev-garage/config.yaml   (legacy: ~/.config/ai-garage/config.yaml)
+#   3. environment variable (for credentials)
+#   4. interactive self-recovery
+#
+# All reads/writes go through the `ai-garage-core:config-merger` skill, which
+# preserves comments, keeps unknown keys, and writes atomically.
 
 project:
   name: null                        # Service/project identifier (free text)

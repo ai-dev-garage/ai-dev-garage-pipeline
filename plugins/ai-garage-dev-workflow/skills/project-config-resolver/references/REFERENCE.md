@@ -1,8 +1,20 @@
 # Resolve project config — reference
 
-## Config file schema
+## Config file location
 
-The project config file lives at `{PROJECT_ROOT}/.ai-dev-garage/project-config.yaml` (project-level) or `~/.config/ai-garage/config.yaml` (global fallback).
+Canonical paths (preferred for all new installs):
+
+- **Project:** `{PROJECT_ROOT}/.ai-dev-garage/project-config.yaml`
+- **Global:** `~/.ai-dev-garage/config.yaml`
+
+Legacy paths (still read for backwards compatibility; `config-merger` prints a one-line deprecation warning on hit and migrates the **write target** to the canonical path on next write):
+
+- `~/.config/ai-garage/config.yaml` (global legacy)
+- `{PROJECT_ROOT}/.ai-dev-garage/config.yaml` (filename variant)
+
+Override the resolved path for tests or scripts by setting `AI_GARAGE_CONFIG` to an absolute path.
+
+## Config file schema
 
 ```yaml
 project:
@@ -42,10 +54,13 @@ Each `transitions.*` value is the Jira transition **name** to search for (case-i
 
 ## Resolution order
 
-1. **Project config** (`{PROJECT_ROOT}/.ai-dev-garage/project-config.yaml`) — highest priority.
-2. **Global config** (`~/.config/ai-garage/config.yaml`) — fallback for keys not in project config.
-3. **Environment variables** — for credentials only (e.g. `JIRA_API_TOKEN`).
-4. **Interactive self-recovery** — last resort; writes answer back to project config.
+1. **`AI_GARAGE_CONFIG` env override** (absolute path).
+2. **Project config** — canonical `{PROJECT_ROOT}/.ai-dev-garage/project-config.yaml`; falls through to legacy `{PROJECT_ROOT}/.ai-dev-garage/config.yaml` on read if canonical is absent.
+3. **Global config** — canonical `~/.ai-dev-garage/config.yaml`; falls through to legacy `~/.config/ai-garage/config.yaml` on read.
+4. **Environment variables** — for credentials only (e.g. `JIRA_API_TOKEN`).
+5. **Interactive self-recovery** — last resort; writes answer back via `config-merger set` to the canonical file.
+
+All path resolution is delegated to `ai-garage-core:config-merger`. Consumers should not reimplement lookup order.
 
 ## Defaults (applied during self-recovery when user provides no preference)
 
