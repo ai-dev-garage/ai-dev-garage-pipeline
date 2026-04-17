@@ -4,7 +4,7 @@
     "name": "AI Dev Garage"
   },
   "metadata": {
-    "description": "AI Dev Garage — portable AI workflow runtime with standards, agile, dev-workflow, and Jira plugins",
+    "description": "AI Dev Garage — portable AI workflow runtime with standards, agile, dev-workflow, Jira, assistant, and architect plugins",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -27,6 +27,16 @@
       "name": "ai-garage-jira",
       "source": "./plugins/ai-garage-jira",
       "description": "Jira integration — fetch tickets, walk hierarchy, gap analysis; plugs into dev-workflow as a task source."
+    },
+    {
+      "name": "ai-garage-assistant",
+      "source": "./plugins/ai-garage-assistant",
+      "description": "Personal assistant — on-demand session summaries, topic investigations, and quick capture to a configurable Notion database."
+    },
+    {
+      "name": "ai-garage-architect",
+      "source": "./plugins/ai-garage-architect",
+      "description": "Architect / techlead assistant — advisory and producer modes with parallel researcher fan-out; generates ADRs matching the project's house style."
     }
   ]
 }
