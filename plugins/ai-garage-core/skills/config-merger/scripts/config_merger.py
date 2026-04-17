@@ -509,32 +509,43 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--scope", choices=["project", "global"], default="project")
     p.add_argument("--quiet", action="store_true")
 
+    # Shared parent so common flags (--scope, --file, --project-root, --quiet)
+    # are accepted both BEFORE and AFTER the subcommand.  LLM callers
+    # frequently write `path --scope project` instead of `--scope project path`.
+    # SUPPRESS default so subparser values only appear when explicitly passed,
+    # never overwriting values the main parser already set.
+    _shared = argparse.ArgumentParser(add_help=False)
+    _shared.add_argument("--file", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+    _shared.add_argument("--project-root", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+    _shared.add_argument("--scope", choices=["project", "global"], default=argparse.SUPPRESS)
+    _shared.add_argument("--quiet", action="store_true", default=argparse.SUPPRESS)
+
     sub = p.add_subparsers(dest="subcommand", required=True)
 
-    g = sub.add_parser("get")
+    g = sub.add_parser("get", parents=[_shared])
     g.add_argument("key_path")
     g.set_defaults(func=cmd_get)
 
-    s = sub.add_parser("set")
+    s = sub.add_parser("set", parents=[_shared])
     s.add_argument("key_path")
     s.add_argument("value")
     s.add_argument("--raw-string", action="store_true", help="Force string interpretation of value.")
     s.set_defaults(func=cmd_set)
 
-    m = sub.add_parser("merge-fragment")
+    m = sub.add_parser("merge-fragment", parents=[_shared])
     m.add_argument("fragment_file")
     m.set_defaults(func=cmd_merge_fragment)
 
-    a = sub.add_parser("add-to-list", help="Idempotent append to a YAML list.")
+    a = sub.add_parser("add-to-list", parents=[_shared], help="Idempotent append to a YAML list.")
     a.add_argument("key_path")
     a.add_argument("value")
     a.add_argument("--raw-string", action="store_true", help="Force string interpretation of value.")
     a.set_defaults(func=cmd_add_to_list)
 
-    v = sub.add_parser("validate")
+    v = sub.add_parser("validate", parents=[_shared])
     v.set_defaults(func=cmd_validate)
 
-    pa = sub.add_parser("path")
+    pa = sub.add_parser("path", parents=[_shared])
     pa.set_defaults(func=cmd_path)
 
     return p
