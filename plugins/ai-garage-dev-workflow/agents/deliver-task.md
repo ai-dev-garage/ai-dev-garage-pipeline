@@ -76,9 +76,11 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
 
 ### 4. Phase 2 — Plan
 - **Goal:** Build the WBS.
-- **Action:** Delegate to the **implementation-planner** agent with the task key. After the planner saves, read the WBS and present the `## Progress` section. **STOP** and wait for user confirmation before proceeding.
+- **Action:** Delegate to the **implementation-planner** agent with the task key. After the planner saves, read the WBS and present the `## Progress` section.
+  - If `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/execution-mode.txt` exists and reads `autonomous`, print the summary and advance to step 4a without pausing — the user already authorized end-to-end execution at the Phase-5 gate in the prior run.
+  - In any other mode (no file, `full-control`, or `stop-at-phase-N`): **STOP** and wait for user confirmation before proceeding.
 - Skip if WBS already exists and user chose **Continue**.
-- **Output:** User-confirmed WBS.
+- **Output:** User-confirmed (or auto-confirmed in autonomous mode) WBS.
 
 ### 4a. Jira phase sync — create sub-tasks (optional)
 - **Goal:** Mirror WBS phases as Jira sub-tasks on the board.
@@ -105,12 +107,31 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
 - **Output:** WBS annotated with `[jira:KEY]` per phase (or unchanged if skipped, with a user-visible reason).
 
 ### 5. Gate — Choose execution mode (mandatory before Phase 3)
-- **Goal:** Determine implementation pacing.
-- **Action:** Ask the user (separate from WBS approval):
-  - **A) Full control** — phase-by-phase with confirmation.
-  - **B) Stop at phase N** — automatic until phase N.
-  - **C) Autonomous** — end-to-end, stop only on blockers.
-- **Output:** Execution mode recorded.
+- **Goal:** Determine implementation pacing **once** and persist the choice so every sub-agent honours it without re-asking.
+- **Action:**
+  1. If `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/execution-mode.txt` already exists, read its contents and reuse that mode for this run — do **not** re-prompt. Emit a one-line note: `Execution mode loaded from state: <mode>.`
+  2. Otherwise, ask the user (separate from WBS approval):
+     - **A) Full control** — phase-by-phase with confirmation.
+     - **B) Stop at phase N** — automatic until phase N.
+     - **C) Autonomous** — end-to-end, stop only on blockers.
+  3. Write the chosen mode to `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/execution-mode.txt` as a single line:
+     - `full-control` for A.
+     - `stop-at-phase-<N>` for B (with the user's chosen N substituted).
+     - `autonomous` for C.
+  4. This file is the **single source of truth** for execution mode during the rest of the lifecycle. Every delegated agent (`implementation-planner`, `implement-task`, `finalize-task`) MUST read it instead of asking the user again.
+- **Output:** Execution mode recorded in state file.
+
+### 5a. Jira transition preflight (once per task, before Phase 3)
+- **Goal:** Validate every configured Jira transition name against the live board **exactly once** and cache the result so the Phase-3 loop never re-probes.
+- **Condition:** Run only when `task_source` is `jira`, `integrations.jira.sync-phases` is `true`, at least one WBS phase has a `[jira:KEY]` annotation, and the **jira-phase-sync** skill is available.
+- **Action:**
+  1. If `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/jira-transitions.json` already exists, skip — the cache is authoritative.
+  2. Otherwise, pick the **first** WBS phase that has a `[jira:KEY]` annotation as the probe subtask. Read `integrations.jira.transitions.*` from project config.
+  3. Call **jira-phase-sync** in `preflight-transitions` mode with `TASK-KEY`, `probe-subtask-key`, and the `configured-transitions` map.
+  4. **On success (all four events mapped):** the skill has written the cache file; continue to Phase 3.
+  5. **On mismatch:** the skill returns `mismatch: true` and a `user_message` block. Surface that block to the user verbatim — this is the single authorized interactive pause in autonomous mode. Ask the user to either confirm the suggested `config-merger` one-liners or edit the config manually. After the user reports "done" (or re-runs the orchestrator), re-invoke `preflight-transitions`. Loop until the cache is written.
+  6. **On credentials missing or other skill error:** emit the one-line user_message from the skill, skip the cache (subsequent `transition` calls fall back to the legacy per-call flow) and continue.
+- **Output:** `jira-transitions.json` cached under the task state folder — OR documented fallback to per-call transition lookups when preflight cannot run.
 
 ### 6. Phase 3 — Implement (dependency-aware scheduling)
 - **Goal:** Execute WBS phases respecting the dependency graph.
@@ -118,7 +139,7 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
 
   1. **Find ready phases:** Parse `[depends-on:]` annotations. A phase is ready when its status is `NOT STARTED` and all its dependencies are `[DONE]`. Phases without `[depends-on:]` depend on the immediately preceding phase.
   2. **Dispatch:**
-     - **Jira sync — phase started:** Before delegating, if the phase has a `[jira:KEY]` annotation and `integrations.jira.sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with the sub-task key and event `phase-started` (resolved from `integrations.jira.transitions.phase-started`). On failure: warn, continue.
+     - **Jira sync — phase started:** Before delegating, if the phase has a `[jira:KEY]` annotation and `integrations.jira.sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with `TASK-KEY`, the sub-task key, and `event=phase-started`. The skill reads `jira-transitions.json` for the resolved id — no per-call `/transitions` GET. On failure: warn, continue.
      - **One ready phase:** Delegate to **implement-task** sequentially with `TASK-KEY`, `PHASE-KEY`, and `execution_mode`.
      - **Multiple ready phases:** At your discretion, you may spawn parallel **implement-task** agents (one per phase, as background sub-agents). Consider running in parallel when:
        - Execution mode is autonomous or batch
@@ -129,13 +150,16 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
      - `status: done` → mark `[DONE]` in WBS
      - `status: blocked` → keep `[IN PROGRESS]`, note blocker
      - `status: partial` → keep `[IN PROGRESS]`
-     - **Jira sync — phase implemented:** After reconciling, if the phase has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with event `phase-implemented` (resolved from `integrations.jira.transitions.phase-implemented`). On failure: warn, continue.
+     - **Jira sync — phase implemented:** After reconciling, if the phase has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with `TASK-KEY`, the sub-task key, and `event=phase-implemented`. Cache-first resolution applies. On failure: warn, continue.
   4. **Code quality review (medium/high effort phases):**
-     - **Jira sync — review started:** Before running the quality review, if the phase has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with event `review-started` (resolved from `integrations.jira.transitions.review-started`). On failure: warn, continue.
+     - **Jira sync — review started:** Before running the quality review, if the phase has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with `TASK-KEY`, the sub-task key, and `event=review-started`. Cache-first resolution applies. On failure: warn, continue.
   5. If all items in a phase are `[DONE]`, mark the phase `[DONE]` and write `### Implementation Summary` from the work report.
-     - **Jira sync — phase ready:** After marking the phase `[DONE]`, if it has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with event `phase-ready` (resolved from `integrations.jira.transitions.phase-ready`). On failure: warn, continue.
-  6. Present updated WBS status. If blockers exist, ask user how to proceed.
-  7. Gate before next round: ask Continue / Re-run / Stop (unless autonomous mode).
+     - **Jira sync — phase ready:** After marking the phase `[DONE]`, if it has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with `TASK-KEY`, the sub-task key, and `event=phase-ready`. Cache-first resolution applies. On failure: warn, continue.
+  6. Present updated WBS status. If blockers exist, ask user how to proceed — this gate applies in **all** modes, including autonomous.
+  7. **Gate before next round** (depends on `execution-mode.txt`):
+     - `autonomous` — if no blocker was recorded in step 6, advance to the next phase without prompting. Emit a one-line `Phase <key> complete — advancing (autonomous mode).`
+     - `stop-at-phase-<N>` — advance without prompting until the phase whose key matches `<N>` (or whose ordinal matches, if `<N>` is a number) has been dispatched; after that phase completes, fall back to full-control prompting.
+     - `full-control` (or file missing) — ask `Continue / Re-run / Stop` as today.
 
 - **Output:** Updated WBS with implementation progress.
 
@@ -160,4 +184,5 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
 - WBS `## Progress` is the source of truth — keep it accurate.
 - Do not skip the execution mode gate before Phase 3.
 - Self-recovery: if a dependency is missing, use **project-config-resolver** and retry — do not re-run completed phases.
-- Gate before advancing: after each phase, present status and ask Continue / Re-run / Stop.
+- Gate before advancing: after each phase, present status; ask `Continue / Re-run / Stop` only in `full-control` mode (or when no `execution-mode.txt` is present). In `autonomous` mode, auto-advance on a clean phase and only pause on an explicit blocker.
+- Always pass the execution mode to every delegated agent both implicitly (the state file at `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/execution-mode.txt`) and as an explicit input argument when supported. Sub-agents are required to treat the state file as the single source of truth — they MUST NOT re-prompt the user for the mode.

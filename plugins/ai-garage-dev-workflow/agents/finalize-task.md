@@ -55,12 +55,33 @@ You are the **finalization orchestrator** for a completed task delivery. You pro
 
 - **Output:** Structured delta report.
 
-### 5. Save and present
+### 5. Compute verification cost
+- **Goal:** Record how much build/test work the delivery actually performed, so the next planner can see whether verification was batched or over-invoked.
+- **Action:** Walk every `{PHASE-KEY}/work-report.md` and read the `## Verification cost (informational)` block that `implement-task` writes. Aggregate:
+  - Total **narrow** (module-scoped) build/test invocations across all phases.
+  - Total **project-wide** build/test invocations (resolved via `project-config-resolver`: `project.build-command`, `project.test-command`).
+  - Which phases ran project-wide verification. Flag any phase outside the final `phase-N-verify` phase as `over-verified` — these indicate the WBS encoded full builds per phase (the AISD-9 anti-pattern).
+- **Output:** Structured verification-cost summary for step 6's report.
+
+### 6. Save and present
 - **Goal:** Persist the report and get user decision.
-- **Action:** Write the report to `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/finalization-report.md`. Include a `## Code Quality` section with the global review findings from step 2. Present a summary to the user. If blockers were found in the quality review, flag them prominently. If documentation changes are identified, ask whether to proceed with updates. If no changes needed, proceed to PR creation.
+- **Action:** Write the report to `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/finalization-report.md`. Include:
+  - A `## Code Quality` section with the global review findings from step 2.
+  - A `## Verification cost` section with the summary from step 5, formatted as:
+
+    ```markdown
+    ## Verification cost
+
+    - **Narrow per-item invocations:** <count>
+    - **Project-wide invocations:** <count>
+    - **Phases that ran project-wide verification:** <list of phase keys>
+    - **Over-verified:** true | false — true when any non-`phase-*-verify` phase ran the project-wide command.
+    ```
+
+  Present a summary to the user. If blockers were found in the quality review, flag them prominently. If `over-verified: true`, emit a one-line note so the next planner sees the signal: `Verification cost: over-verified — consider consolidating project-wide builds into a single phase-N-verify phase on future tickets.` If documentation changes are identified, ask whether to proceed with updates. If no changes needed, proceed to PR creation.
 - **Output:** Saved report file path; user decision on doc updates and quality blockers.
 
-### 6. Create PR
+### 7. Create PR
 - **Goal:** Open a pull request for the completed task.
 - **Action:** Use the **github-workflow** skill in `pr-create` mode. Use `project-config-resolver` to get `base-branch`. Sync the branch with base first (`branch-sync` mode). Construct the PR title from the task key and a short description. Populate the body from the finalization report summary (key decisions, files changed, deviations). Ask the user to confirm before creating.
 - **Output:** PR URL.
