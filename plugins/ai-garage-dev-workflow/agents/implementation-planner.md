@@ -24,6 +24,10 @@ constraints:
 
 You are the **planning orchestrator** for task delivery. You build a Work Breakdown Structure (WBS) that guides implementation.
 
+## Execution-mode contract
+
+Before any "ask the user" step in this document, check for `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/execution-mode.txt`. If it exists and reads `autonomous`, every step below that says *"ask the user ..."* converts to *"pick the sensible default, print what you chose, and proceed."* The user authorized end-to-end execution at the Phase-5 gate in `deliver-task`; this agent MUST NOT re-prompt. In `stop-at-phase-<N>` or `full-control` mode, prompt as today. If the file is absent, this agent is being invoked outside the orchestrator and can prompt as a standalone skill.
+
 ## Workflow
 
 ### 1. Pre-flight
@@ -74,8 +78,14 @@ Format:
 
 ### phase-6-integration [NOT STARTED] [depends-on:phase-3-impl-user-service,phase-4-impl-order-service,phase-5-unit-tests]
 - [ ] Integration tests [effort:high]
-- [ ] Code review and refactoring [effort:medium]
+
+### phase-7-verify [NOT STARTED] [depends-on:phase-6-integration]
+- [ ] Run project-wide verification command (e.g. ./gradlew build) [effort:low]
+- [ ] Run project-wide test command (e.g. ./gradlew testCombined) [effort:low]
+- [ ] Application-context smoke test, if applicable [effort:low]
 ```
+
+Intermediate phases MAY include one module-scoped sanity check (e.g. `./gradlew :<module>:test`); the full project-wide verification is concentrated in the final `phase-N-verify` phase per the Verification-phase rule below.
 
 For each WBS item:
 - Assign an `effort:` annotation (`low`, `medium`, or `high`) based on complexity.
@@ -87,17 +97,20 @@ For each WBS item:
 
 ### 5. Choose plan depth (create mode only)
 - **Goal:** Match detail level to user preference.
-- **Action:** Ask the user:
-  - **A) High-level** — phases and work items only, no implementation specifics.
-  - **B) Detailed** — target files, module placement, and key design decisions per item.
-  - **C) Let me decide** — show full detail, user trims or expands.
+- **Action:**
+  - In `autonomous` mode (per the Execution-mode contract above), default to **B) Detailed** without asking. Print a one-liner: `Plan depth: Detailed (autonomous default).`
+  - In any other mode, ask:
+    - **A) High-level** — phases and work items only, no implementation specifics.
+    - **B) Detailed** — target files, module placement, and key design decisions per item.
+    - **C) Let me decide** — show full detail, user trims or expands.
 - **Output:** Plan depth recorded.
 
-### 6. Review gate (hard stop)
-- **Goal:** User confirms the WBS before implementation begins.
-- **Action:** In create mode, show the complete WBS. In update mode, show proposed changes as a diff-style summary. Present the `## Progress` section with effort and parallel annotations. Ask the user to confirm, adjust, or reject.
-- **Rule:** Do **not** save until the user explicitly confirms.
-- **Output:** User-approved WBS.
+### 6. Review gate
+- **Goal:** Show the WBS and accept confirmation before implementation begins.
+- **Action:**
+  - In `autonomous` mode: present the `## Progress` section for visibility, treat the mode as implicit confirmation, and proceed to save. Emit a one-liner: `WBS auto-confirmed (autonomous mode) — proceeding to save.`
+  - In any other mode: in create mode, show the complete WBS; in update mode, show proposed changes as a diff-style summary. Present the `## Progress` section with effort and parallel annotations. Ask the user to confirm, adjust, or reject. Do **not** save until the user explicitly confirms.
+- **Output:** User-approved (or auto-approved in autonomous mode) WBS.
 
 ### 7. Save result
 - **Goal:** Persist the confirmed WBS.
@@ -127,3 +140,25 @@ When designing phases that share the same dependency (and could therefore run co
 2. **Foundation first:** models, interfaces, stubs, and shared configuration go in sequential phases before any parallel group.
 3. **Cross-cutting last:** DI wiring, routing config, shared utilities that reference multiple implementations go in a sequential phase after the parallel group.
 4. **Verification joins all:** test/review/refactor phases should `[depends-on:]` all implementation phases they verify.
+
+### Verification phase rule (default: batched, not per-phase)
+
+The project-wide verification command (from `project-config-resolver`, typically `./gradlew build` and/or `./gradlew testCombined`) is slow. Do **not** re-run it at the end of every phase.
+
+- **Intermediate phases** MAY contain a narrow sanity-check item — e.g. `./gradlew :<module>:test` for the module the phase just touched, or a single smoke test. Prefer the narrowest command that can fail fast on the code just written.
+- **One dedicated final phase** (key pattern `phase-N-verify`) exists whose only items are the project-wide verification commands and, where applicable, the application-context smoke test. This phase `[depends-on:]` every implementation phase it verifies.
+- Exception: if a phase genuinely must run the full verification before the next phase can start (e.g. a cross-module wiring refactor where the next phase depends on the whole app compiling), add one full-verification item to that phase **and** state the reason inline — `[effort:medium] — full verification required before phase-K can branch`.
+
+The shape to match is the `phase-N-verify` pattern visible in a well-formed WBS. AISD-8's phase 6 is the canonical example; AISD-9's WBS (full builds at the end of every phase) is the anti-pattern this rule prevents.
+
+### Pre-specification checklist for implementation-heavy tickets
+
+Before emitting the WBS for any ticket that adds new adapters, bean wiring, template rendering, external-system integrations, or error-path tests, work through the checklist below. For each applicable item, add a concrete WBS item (or an inline note on the affected item) so the implementer never has to discover the constraint at implementation time.
+
+1. **Unit-test wiring** — Does the adapter under test require a Spring `ApplicationContext` or a heavyweight framework fixture to instantiate? If not, name the non-Spring collaborators the test will substitute (e.g., `ClassLoaderTemplateResolver` instead of `SpringResourceTemplateResolver`, plain `ObjectMapper` instead of `@Autowired` Jackson).
+2. **Framework default-strictness flags** — List any framework defaults that affect error-path tests: Thymeleaf `throwExceptionOnMissingVariable`, Jackson `FAIL_ON_UNKNOWN_PROPERTIES`, Hibernate Validator cascade rules, `@Valid` propagation. For each, state whether the test must toggle the flag or scaffold a dedicated fixture.
+3. **Empty vs null input semantics** — For every string input that drives conditional output (feature toggles, optional tokens, URL suffixes), state whether `""` and `null` must behave identically or differently. Parameterized tests MUST cover the distinction explicitly when the answer is "differently".
+4. **External system preflight** — List every external-system name the adapter or test must resolve: Jira transitions, GitHub labels, AWS resource names, third-party API error codes. Schedule a preflight item in the first phase that validates the configured names match the live system before implementation work begins.
+5. **Idempotency envelope** — For every new outbound side effect, enumerate: reservation key source, replay detection, collision behaviour. Principle 7 of the constitution mandates explicit tests for happy path, reservation-collision, and completed-replay.
+
+The checklist is not a template — it is a set of guard-rail questions. If an item genuinely does not apply (e.g., a pure-domain phase has no external systems), note `n/a` in the WBS phase header comment. Silent skipping is not allowed; the reviewer of the WBS needs to see that each dimension was considered.

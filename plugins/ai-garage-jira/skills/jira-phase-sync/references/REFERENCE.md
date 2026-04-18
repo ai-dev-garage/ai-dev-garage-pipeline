@@ -96,9 +96,36 @@ When creating sub-tasks, build the summary and description from the WBS phase:
   - Create Order entity [effort:low]
   ```
 
+## Transition cache (`jira-transitions.json`)
+
+Written by `preflight-transitions` at `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/jira-transitions.json`. Read by every subsequent `transition` call so the skill does not re-probe the board's `/transitions` endpoint per call.
+
+**Shape:**
+
+```json
+{
+  "probed-at": "2026-04-18T12:00:00Z",
+  "probe-subtask": "PROJ-456",
+  "board-transitions": ["To Do", "In Progress", "To Review", "Done"],
+  "mapping": {
+    "phase-started":     { "configured": "In Progress", "resolved-name": "In Progress", "resolved-id": "21" },
+    "phase-implemented": { "configured": "To Review",   "resolved-name": "To Review",   "resolved-id": "31" },
+    "review-started":    { "configured": "To Review",   "resolved-name": "To Review",   "resolved-id": "31" },
+    "phase-ready":       { "configured": "Done",        "resolved-name": "Done",        "resolved-id": "41" }
+  }
+}
+```
+
+- `probed-at` is ISO-8601 and used to detect stale caches across very long-running tasks.
+- `probe-subtask` records which sub-task's `/transitions` endpoint was probed. If a later sub-task is in a different workflow (rare — would only happen if the project mixes issue types that each carry their own workflow), the cache is invalidated and a fresh preflight is required.
+- `mapping` is keyed by the **semantic event** name (`phase-started`, `phase-implemented`, `review-started`, `phase-ready`), not by the board name — the same board name may be reused across multiple events, and the cache collapses them correctly.
+- `resolved-id` is the Jira transition id used directly in the `POST /transitions` payload, skipping the name→id lookup entirely on cache hits.
+
+**Invalidation:** The orchestrator (`deliver-task`) deletes this file when the user changes any `integrations.jira.transitions.*` value in project-config. The skill itself does not watch the config file.
+
 ## API notes
 
 - All endpoints use Jira REST API v2.
-- If your Jira deployment uses **Basic** auth instead of Bearer, adjust headers per your org's policy.
-- Rate limits vary by Jira tier. The skill makes at most N+1 calls per sync (N phases + 1 transition per event), which is well within standard limits.
+- If your Jira deployment uses **Basic** auth instead of Bearer, adjust headers per your org's policy. Atlassian Cloud personal API tokens require Basic with `JIRA_USER_EMAIL:JIRA_API_TOKEN` — see `jira-item-fetcher/references/REFERENCE.md` for the full overlay.
+- Rate limits vary by Jira tier. With `preflight-transitions` + cache, the skill makes at most **N sub-task creations + 1 preflight probe + K transitions** per task (K = phases × transitions-per-phase), versus the old flow's **N creations + K GET /transitions + K POST /transitions** — roughly 2× reduction in API calls on typical deliveries.
 - The `project.key` in the create payload is derived from the parent key: split on `-` and take the first part.
