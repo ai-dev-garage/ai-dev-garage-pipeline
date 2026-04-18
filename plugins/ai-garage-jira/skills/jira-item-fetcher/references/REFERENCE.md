@@ -24,9 +24,9 @@ Apply in order; **later** rows override **earlier** rows **per key** (URL and to
 
 | Step | Source | Keys |
 |------|--------|------|
-| 1 | Global env file | canonical `~/.ai-dev-garage/secrets.env` → legacy `~/.config/ai-garage/jira.env`; reads `JIRA_BASE_URL`, `JIRA_API_TOKEN` |
+| 1 | Global env file | canonical `~/.ai-dev-garage/secrets.env` → legacy `~/.config/ai-garage/jira.env`; reads `JIRA_BASE_URL`, `JIRA_API_TOKEN`, `JIRA_USER_EMAIL` |
 | 2 | Project env file | canonical `{PROJECT_ROOT}/.ai-dev-garage/secrets.env` → legacy `{PROJECT_ROOT}/.config/ai-garage/jira.env` |
-| 3 | Process environment | `JIRA_BASE_URL`, `JIRA_API_TOKEN`; token fallbacks `ATLASSIAN_API_TOKEN`, `CONFLUENCE_API_TOKEN` (in that order; used only if `JIRA_API_TOKEN` is unset) |
+| 3 | Process environment | `JIRA_BASE_URL`, `JIRA_API_TOKEN`, `JIRA_USER_EMAIL`; token fallbacks `ATLASSIAN_API_TOKEN`, `CONFLUENCE_API_TOKEN` (in that order; used only if `JIRA_API_TOKEN` is unset) |
 | 4 | Caller | `jira-base-url`, `jira-api-token` |
 
 Example: token only in global file, URL only in `JIRA_BASE_URL` env → both are used after overlay.
@@ -35,7 +35,7 @@ Example: token only in global file, URL only in `JIRA_BASE_URL` env → both are
 
 Plain text, one variable per line (`KEY=value`). Lines starting with `#` are comments. Optional quotes around values.
 
-Start from **`jira.template.env`** at the plugin root (`${CLAUDE_PLUGIN_ROOT}/` in the pipeline repo); only **`JIRA_BASE_URL`** and **`JIRA_API_TOKEN`** are required for **jira-item-fetcher** today.
+Start from **`jira.template.env`** at the plugin root (`${CLAUDE_PLUGIN_ROOT}/` in the pipeline repo); `JIRA_BASE_URL`, `JIRA_API_TOKEN`, and `JIRA_USER_EMAIL` (for Atlassian Cloud Basic auth) are required for **jira-item-fetcher** today.
 
 No spaces around `=`. Strip trailing whitespace from values.
 
@@ -43,8 +43,8 @@ No spaces around `=`. Strip trailing whitespace from values.
 
 Reply with a **single** short block for the user (no token prompt):
 
-- Jira lookups need a **base URL** and **API token**.
-- Set **`JIRA_BASE_URL`** and **`JIRA_API_TOKEN`** in the environment, **or** copy **`jira.template.env`** to **`~/.ai-dev-garage/secrets.env`** (global) or **`<project>/.ai-dev-garage/secrets.env`** (project) and fill in values.
+- Jira lookups need a **base URL**, **API token**, and (for Atlassian Cloud) the token owner's **email**.
+- Set **`JIRA_BASE_URL`**, **`JIRA_API_TOKEN`**, and **`JIRA_USER_EMAIL`** in the environment, **or** copy **`jira.template.env`** to **`~/.ai-dev-garage/secrets.env`** (global) or **`<project>/.ai-dev-garage/secrets.env`** (project) and fill in values.
 - Legacy locations (`~/.config/ai-garage/jira.env`, `<project>/.config/ai-garage/jira.env`) are still read but will be migrated on the next run.
 - See Atlassian’s docs to create a token; keep the file out of git.
 
@@ -52,14 +52,16 @@ Extension overview: **[README.md](../../../README.md)** (this extension folder i
 
 ## Fetch single issue
 
-`KEY` is the uppercase ticket key. `TOKEN` is the resolved API token.
+`KEY` is the uppercase ticket key. `TOKEN` is the resolved API token. `EMAIL` is the token owner's email (`JIRA_USER_EMAIL`) — required for Atlassian Cloud Basic auth.
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  "$JIRA_BASE_URL/rest/api/2/issue/$KEY?fields=summary,description,status,priority,issuetype,assignee,reporter,parent,created,updated,timeoriginalestimate,comment"
+  -u "$EMAIL:$TOKEN" \
+  -H "Accept: application/json" \
+  "$JIRA_BASE_URL/rest/api/3/issue/$KEY?fields=summary,description,status,priority,issuetype,assignee,reporter,parent,created,updated,timeoriginalestimate,comment"
 ```
+
+On self-hosted Jira Server / Data Center, `-u "$EMAIL:$TOKEN"` can be replaced with `-H "Authorization: Bearer $TOKEN"` when `JIRA_USER_EMAIL` is not available.
 
 ## Output template
 
@@ -94,15 +96,17 @@ curl -s \
 - Timestamps are ISO 8601 — display as `YYYY-MM-DD`.
 - `timeoriginalestimate` is in seconds — divide by 3600 for hours.
 - Omit any field row where the value is null or empty.
-- If your Jira deployment uses **Basic** auth instead of Bearer, adjust headers per your org’s policy (this skill documents Bearer + API token as the common Cloud pattern).
+- Atlassian Cloud personal API tokens require HTTP **Basic** auth with `JIRA_USER_EMAIL:JIRA_API_TOKEN`. Bearer auth is for self-hosted Jira Server / Data Center or for OAuth access tokens; sending a Cloud personal token as Bearer returns `Failed to parse Connect Session Auth Token`.
 
 ## JQL search endpoint
 
-For fetching sibling tasks or related issues:
+For fetching sibling tasks, epic children, or related issues. Use the **v3 enhanced search** path; the deprecated `/rest/api/2/search` returns no `issues` array on recent Atlassian Cloud tenants.
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  "$JIRA_BASE_URL/rest/api/2/search?jql=parent%3D{PARENT-KEY}%20ORDER%20BY%20created%20ASC&fields=summary,status,issuetype,assignee"
+  -u "$EMAIL:$TOKEN" \
+  -H "Accept: application/json" \
+  "$JIRA_BASE_URL/rest/api/3/search/jql?jql=parent%3D{PARENT-KEY}%20ORDER%20BY%20rank%20ASC&fields=summary,status,issuetype,assignee"
 ```
+
+For walking an epic's children with rank + block-graph awareness, prefer the dedicated `jira-epic-walker` skill over hand-rolling this query.

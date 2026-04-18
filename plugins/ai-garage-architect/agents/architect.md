@@ -9,6 +9,9 @@ skills:
   - ai-garage-architect:adr-writer
   - ai-garage-architect:arch-artifact-publisher
   - ai-garage-dev-workflow:project-config-resolver
+agents:
+  - ai-garage-architect:architecture-researcher
+  - ai-garage-architect:architecture-synthesizer
 inputs:
   - raw user request (topic, problem, or direct produce ask)
   - optional Jira ticket key/URL

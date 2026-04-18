@@ -9,6 +9,11 @@ skills:
   - ai-garage-dev-workflow:feature-branch-guard
   - ai-garage-dev-workflow:project-config-resolver
   - ai-garage-jira:jira-phase-sync
+agents:
+  - ai-garage-dev-workflow:implementation-planner
+  - ai-garage-dev-workflow:implement-task
+  - ai-garage-dev-workflow:finalize-task
+  - ai-garage-jira:jira-task-analysis
 inputs:
   - TASK-KEY or Jira ticket key/URL
   - task_source (jira | github | manual — default: manual)

@@ -28,6 +28,7 @@ In the agent’s **Rules**, state that loading follows plugin discovery (project
 | `name` | **required** | Verb-noun, hyphenated; must match filename without `.md`. |
 | `description` | **required** | When to use, what it produces; shown in agent pickers. |
 | `skills` | **recommended** | YAML list of skill names (directory names under `skills/`) the agent relies on. |
+| `agents` | **recommended** | YAML list of sub-agent names (namespaced as `plugin:agent-name`) this agent delegates to. Runtimes use this to pre-register `subagent_type` values for nested `Agent` dispatch. Omit for leaf agents that do not spawn others. |
 | `inputs` | **recommended** | What the caller passes (e.g. raw user text, `PROJECT_ROOT`, **`${CLAUDE_PLUGIN_ROOT}`**, **`TARGET_*`** from commands). |
 | `outputs` | **recommended** | What the agent returns or persists (e.g. definition draft, file path). |
 | `model` | optional | e.g. `inherit` for subagents. |
@@ -43,7 +44,7 @@ Optional **tool-specific** fields (use when the product supports them):
 | `version` | Optional metadata. |
 | `author` | Optional metadata. |
 
-Workflow steps should **name skills in prose** (“Use the **normalize-intent** skill …”) while **`skills` in frontmatter** remains the single manifest of dependencies.
+Workflow steps should **name skills and agents in prose** (“Use the **normalize-intent** skill …”, “Delegate to the **implement-task** agent …”) while **`skills`** and **`agents`** in frontmatter remain the single manifest of dependencies.
 
 ## Body structure
 
@@ -105,6 +106,9 @@ description: >-
 skills:
   - normalize-intent
   - define-scope-boundaries
+agents:
+  - my-plugin:sub-agent-a
+  - my-plugin:sub-agent-b
 inputs:
   - user raw input
   - PROJECT_ROOT (optional)
@@ -112,9 +116,11 @@ inputs:
 outputs:
   - confirmed artifact description
 model: inherit
+tools: Agent, Bash, Edit, Glob, Grep, Read, Skill, Write, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList
 tags:
   - example
 constraints:
+  - requires nested Agent dispatch to fan out sub-agent-a and sub-agent-b; must be invokable in a context where the Agent tool is available
   - do not write to disk until user confirms
 ---
 ```
@@ -145,7 +151,7 @@ Plugins are discovered automatically; project-local overrides take precedence. *
 
 - [ ] `name` matches filename
 - [ ] `description` is specific
-- [ ] Recommended frontmatter (`skills`, `inputs`, `outputs`) present or consciously omitted
+- [ ] Recommended frontmatter (`skills`, `agents`, `inputs`, `outputs`) present or consciously omitted
 - [ ] No long worked examples in the agent body
 - [ ] No multiline executable scripts in the agent body
 - [ ] Workflow steps reference skills by name; manifest in `skills` list
