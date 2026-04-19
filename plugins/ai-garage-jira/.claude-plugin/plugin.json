@@ -1,7 +1,7 @@
 {
   "name": "ai-garage-jira",
-  "version": "1.4.0",
-  "description": "Jira integration — fetch tickets, walk epics, gap analysis, and mirror WBS phases as sub-tasks with status transitions.",
+  "version": "1.5.0",
+  "description": "Jira integration — fetch tickets, walk epics, gap analysis, and mirror WBS phases as sub-tasks with status transitions. CLI wrapper for autonomous delivery.",
   "author": {
     "name": "AI Dev Garage"
   },

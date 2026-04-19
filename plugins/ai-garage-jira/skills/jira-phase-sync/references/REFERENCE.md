@@ -1,5 +1,9 @@
 # Jira phase sync — reference
 
+## CLI contract
+
+All REST calls use the Jira CLI at `${CLAUDE_PLUGIN_ROOT}/scripts/jira_cli.py`. See **[jira-item-fetcher REFERENCE.md](../../jira-item-fetcher/references/REFERENCE.md)** for the full CLI contract (subcommand table, common options, exit codes, error output format).
+
 ## Credential precedence (overlay order)
 
 Identical to `jira-item-fetcher`. Apply in order; **later** rows override **earlier** rows **per key** (URL and token independently). Within each file layer, the **canonical** path is preferred and the **legacy** path is a read-only fallback (triggers a one-line deprecation warning).
@@ -13,22 +17,16 @@ Identical to `jira-item-fetcher`. Apply in order; **later** rows override **earl
 
 ## Create sub-task
 
-`PARENT_KEY` is the parent ticket key. `PROJECT_KEY` is extracted from `PARENT_KEY` (everything before the `-`). `SUBTASK_TYPE` is the issue type name (default `"Sub-task"`). `TOKEN` is the resolved API token.
+`PARENT_KEY` is the parent ticket key. `PROJECT_KEY` is extracted from `PARENT_KEY` (everything before the `-`). `SUBTASK_TYPE` is the issue type name (default `"Sub-task"`).
 
 ```bash
-curl -s -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fields": {
-      "project": { "key": "'"$PROJECT_KEY"'" },
-      "parent": { "key": "'"$PARENT_KEY"'" },
-      "summary": "'"$SUMMARY"'",
-      "description": "'"$DESCRIPTION"'",
-      "issuetype": { "name": "'"$SUBTASK_TYPE"'" }
-    }
-  }' \
-  "$JIRA_BASE_URL/rest/api/2/issue"
+python3 "$JIRA_CLI" create-issue \
+  --project "$PROJECT_KEY" \
+  --parent "$PARENT_KEY" \
+  --summary "$SUMMARY" \
+  --description "$DESCRIPTION" \
+  --type "$SUBTASK_TYPE" \
+  --project-root "$PROJECT_ROOT"
 ```
 
 **Success:** HTTP 201. Response body contains `{ "id": "...", "key": "PROJ-456", "self": "..." }`.
@@ -43,10 +41,7 @@ curl -s -X POST \
 Fetch available transitions for an issue. Only transitions reachable from the issue's **current status** are returned.
 
 ```bash
-curl -s \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  "$JIRA_BASE_URL/rest/api/2/issue/$KEY/transitions"
+python3 "$JIRA_CLI" get-transitions "$KEY" --project-root "$PROJECT_ROOT"
 ```
 
 **Response structure:**
@@ -72,11 +67,7 @@ curl -s \
 ## Execute transition
 
 ```bash
-curl -s -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "transition": { "id": "'"$TRANSITION_ID"'" } }' \
-  "$JIRA_BASE_URL/rest/api/2/issue/$KEY/transitions"
+python3 "$JIRA_CLI" transition "$KEY" --id "$TRANSITION_ID" --project-root "$PROJECT_ROOT"
 ```
 
 **Success:** HTTP 204 (no content).
@@ -126,6 +117,6 @@ Written by `preflight-transitions` at `.ai-dev-garage/.workflow-state-tmp/{TASK-
 ## API notes
 
 - All endpoints use Jira REST API v2.
-- If your Jira deployment uses **Basic** auth instead of Bearer, adjust headers per your org's policy. Atlassian Cloud personal API tokens require Basic with `JIRA_USER_EMAIL:JIRA_API_TOKEN` — see `jira-item-fetcher/references/REFERENCE.md` for the full overlay.
+- Auth method is auto-detected by the CLI: if `JIRA_USER_EMAIL` is resolved (env file, process env, or `--email` flag), Basic auth is used (`email:token` base64-encoded); otherwise Bearer auth. Atlassian Cloud personal API tokens require Basic auth.
 - Rate limits vary by Jira tier. With `preflight-transitions` + cache, the skill makes at most **N sub-task creations + 1 preflight probe + K transitions** per task (K = phases × transitions-per-phase), versus the old flow's **N creations + K GET /transitions + K POST /transitions** — roughly 2× reduction in API calls on typical deliveries.
 - The `project.key` in the create payload is derived from the parent key: split on `-` and take the first part.
