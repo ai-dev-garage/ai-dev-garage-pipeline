@@ -14,18 +14,13 @@ argument-hint: mode (create-subtasks | transition | preflight-transitions), pare
 
 ## Instructions
 
-### 1. Resolve API base URL and token
+### 1. Set up the Jira CLI
 
-Build **`JIRA_BASE_URL`** (no trailing slash) and **`JIRA_API_TOKEN`** using the same overlay precedence as `jira-item-fetcher`. See **[REFERENCE.md — Credential precedence](references/REFERENCE.md)**.
+Set `JIRA_CLI="${CLAUDE_PLUGIN_ROOT}/scripts/jira_cli.py"`. The script handles credential resolution internally through the same 4-layer overlay documented in **[REFERENCE.md — Credential precedence](references/REFERENCE.md)** (global env file → project env file → process environment → CLI args).
 
-For each env-file layer, read the canonical path first; fall back to the legacy path and emit a one-line deprecation warning on hit.
+Always pass `--project-root "$PROJECT_ROOT"` when `PROJECT_ROOT` is set. If the caller supplied `jira-base-url` / `jira-api-token`, pass them as `--base-url` / `--token`. If the caller supplied `jira-user-email`, pass it as `--email`.
 
-1. **Global env file:** canonical `~/.ai-dev-garage/secrets.env` → legacy `~/.config/ai-garage/jira.env`.
-2. **Project env file** (if `PROJECT_ROOT` set): canonical `{PROJECT_ROOT}/.ai-dev-garage/secrets.env` → legacy `{PROJECT_ROOT}/.config/ai-garage/jira.env`.
-3. Apply **process environment**: `JIRA_BASE_URL`, `JIRA_API_TOKEN`; token fallbacks `ATLASSIAN_API_TOKEN`, then `CONFLUENCE_API_TOKEN` (used only if `JIRA_API_TOKEN` is unset).
-4. Apply **caller-supplied** `jira-base-url` / `jira-api-token` when non-empty (wins over files and env).
-
-If either value is still missing, return `{ success: false, error: "credentials missing", user_message: "Jira credentials not found — set JIRA_BASE_URL and JIRA_API_TOKEN in env or place them in ~/.ai-dev-garage/secrets.env (or <project>/.ai-dev-garage/secrets.env). See ai-garage-jira README." }`. The caller **must** surface `user_message` to the user as a one-liner before continuing. Do **not** ask the user to paste the token.
+If the script exits with code **2** (credentials missing), read the `hint` field from the stderr JSON and surface it to the user as a one-liner. Do **not** ask the user to paste the token.
 
 ### 2. Dispatch by mode
 
@@ -44,7 +39,10 @@ Accept a `mode` parameter: **`create-subtasks`**, **`transition`**, or **`prefli
 
 1. **Idempotency check:** If the caller indicates the phase already has a `[jira:KEY]` annotation, skip it.
 2. **Build description** from the phase items. Use the WBS item text as the description body.
-3. **Create the sub-task** using the `POST /rest/api/2/issue` endpoint — see **[REFERENCE.md — Create sub-task](references/REFERENCE.md)**.
+3. **Create the sub-task** using the CLI:
+   ```bash
+   python3 "$JIRA_CLI" create-issue --project "$PROJECT_KEY" --parent "$PARENT_KEY" --summary "$SUMMARY" --description "$DESCRIPTION" --type "$SUBTASK_TYPE" --project-root "$PROJECT_ROOT"
+   ```
 4. **Extract** the created issue key from the response (`key` field).
 5. On **error** (non-201 response): capture a one-line `user_message` of the form `Jira sub-task create failed for <phase-key>: HTTP <status> — <error>`. Do not stop — continue to the next phase.
 
@@ -64,7 +62,10 @@ Runs **once per task** to validate the configured transition names against the l
 **Steps:**
 
 1. **Cache check.** If `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/jira-transitions.json` exists, read it and return `{ success: true, cached: true, mapping: <contents> }`. The caller does not re-prompt.
-2. **Fetch available transitions** with `GET /rest/api/2/issue/{probe-subtask-key}/transitions` — **exactly one** API call for the whole task.
+2. **Fetch available transitions** — **exactly one** API call for the whole task:
+   ```bash
+   python3 "$JIRA_CLI" get-transitions "$PROBE_SUBTASK_KEY" --project-root "$PROJECT_ROOT"
+   ```
 3. **Match** each configured name against the board's transitions using case-insensitive substring matching. Build a mapping record:
 
    ```json
@@ -117,9 +118,16 @@ Runs **once per task** to validate the configured transition names against the l
 
 1. If `event`'s configured `target-status` is `null` or empty (cache absent AND the fallback target is empty), skip silently — return `{ success: true, skipped: true }`.
 2. **Cache-first resolution.** Read `.ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/jira-transitions.json`. If present and the entry for `event` has a non-null `resolved-id`, proceed directly to step 5 using that id — **no `/transitions` GET**.
-3. If the cache is missing for the event (e.g. first call for this task, or cache absent because the orchestrator skipped preflight), fall back to the legacy per-call flow: `GET /rest/api/2/issue/{key}/transitions`, case-insensitive substring match against `target-status`. Record that a fallback occurred in the work report so the next planner can see the cost.
+3. If the cache is missing for the event (e.g. first call for this task, or cache absent because the orchestrator skipped preflight), fall back to the legacy per-call flow:
+   ```bash
+   python3 "$JIRA_CLI" get-transitions "$SUBTASK_KEY" --project-root "$PROJECT_ROOT"
+   ```
+   Then case-insensitive substring match against `target-status`. Record that a fallback occurred in the work report so the next planner can see the cost.
 4. If no match is found in either the cache or the fallback fetch: warn with the available transition names and return `{ success: false, warning: "no matching transition" }`. Do not fail the workflow.
-5. **Execute** the transition using `POST /rest/api/2/issue/{key}/transitions` — see **[REFERENCE.md — Execute transition](references/REFERENCE.md)**.
+5. **Execute** the transition:
+   ```bash
+   python3 "$JIRA_CLI" transition "$SUBTASK_KEY" --id "$TRANSITION_ID" --project-root "$PROJECT_ROOT"
+   ```
 6. On **error** (non-204 response): log a warning. Do not fail the workflow.
 
 **Output:** `{ success: true/false, cache_hit: bool, warning?: string }`.

@@ -1,5 +1,46 @@
 # Get Jira item — reference
 
+## CLI contract
+
+The Jira CLI script is at `${CLAUDE_PLUGIN_ROOT}/scripts/jira_cli.py`.
+
+```
+python3 jira_cli.py [common-options] <subcommand> [subcommand-options]
+```
+
+### Subcommands
+
+| Subcommand | Arguments | Exit codes | Stdout |
+|---|---|---|---|
+| `fetch` | `<key> [--fields <list>]` | 0 success, 1 API error, 2 creds missing | JSON issue object |
+| `search` | `--jql <JQL> [--fields <list>] [--max-results <N>]` | 0, 1, 2 | JSON search response |
+| `create-issue` | `--project <KEY> --parent <KEY> --summary <TEXT> --description <TEXT> [--type <TYPE>]` | 0, 1, 2 | JSON `{id, key, self}` |
+| `get-transitions` | `<key>` | 0, 1, 2 | JSON transitions response |
+| `transition` | `<key> --id <ID>` | 0, 1, 2 | JSON `{success, key, transition_id}` |
+| `auth-test` | (none) | 0, 1, 2 | JSON `{http_status, user}` |
+
+### Common options (before or after subcommand)
+
+| Option | Purpose |
+|---|---|
+| `--base-url <URL>` | Override Jira base URL (wins over all file/env sources) |
+| `--token <TOKEN>` | Override API token (wins over all file/env sources) |
+| `--email <EMAIL>` | User email for Basic auth; if absent, Bearer auth is used |
+| `--project-root <PATH>` | Override `$PROJECT_ROOT` for project-level env file resolution |
+| `--timeout <SECONDS>` | HTTP timeout (default: 30; also reads `JIRA_TIMEOUT_SECONDS` env) |
+
+### Error output (stderr)
+
+On exit 1 (API error):
+```json
+{"error": "API error", "http_status": 401, "response": {...}}
+```
+
+On exit 2 (credentials missing):
+```json
+{"error": "credentials missing", "missing": ["JIRA_BASE_URL"], "hint": "Set JIRA_BASE_URL and ..."}
+```
+
 ## Setup (Jira API token)
 
 Jira Cloud REST calls need a **base URL** (e.g. `https://your-site.atlassian.net`) and an **API token** from Atlassian: [Create an API token](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/).
@@ -52,16 +93,17 @@ Extension overview: **[README.md](../../../README.md)** (this extension folder i
 
 ## Fetch single issue
 
-`KEY` is the uppercase ticket key. `TOKEN` is the resolved API token. `EMAIL` is the token owner's email (`JIRA_USER_EMAIL`) — required for Atlassian Cloud Basic auth.
+`KEY` is the uppercase ticket key.
 
 ```bash
-curl -s \
-  -u "$EMAIL:$TOKEN" \
-  -H "Accept: application/json" \
-  "$JIRA_BASE_URL/rest/api/3/issue/$KEY?fields=summary,description,status,priority,issuetype,assignee,reporter,parent,created,updated,timeoriginalestimate,comment"
+python3 "$JIRA_CLI" fetch "$KEY" --project-root "$PROJECT_ROOT"
 ```
 
-On self-hosted Jira Server / Data Center, `-u "$EMAIL:$TOKEN"` can be replaced with `-H "Authorization: Bearer $TOKEN"` when `JIRA_USER_EMAIL` is not available.
+Custom field list:
+
+```bash
+python3 "$JIRA_CLI" fetch "$KEY" --fields "summary,description,status,priority,issuetype,assignee,reporter,parent,created,updated,timeoriginalestimate,comment" --project-root "$PROJECT_ROOT"
+```
 
 ## Output template
 
@@ -96,17 +138,14 @@ On self-hosted Jira Server / Data Center, `-u "$EMAIL:$TOKEN"` can be replaced w
 - Timestamps are ISO 8601 — display as `YYYY-MM-DD`.
 - `timeoriginalestimate` is in seconds — divide by 3600 for hours.
 - Omit any field row where the value is null or empty.
-- Atlassian Cloud personal API tokens require HTTP **Basic** auth with `JIRA_USER_EMAIL:JIRA_API_TOKEN`. Bearer auth is for self-hosted Jira Server / Data Center or for OAuth access tokens; sending a Cloud personal token as Bearer returns `Failed to parse Connect Session Auth Token`.
+- Auth method is auto-detected by the CLI: if `JIRA_USER_EMAIL` is resolved (env file, process env, or `--email` flag), Basic auth is used (`email:token` base64-encoded); otherwise Bearer auth. Atlassian Cloud personal API tokens require Basic auth — sending a Cloud personal token as Bearer returns `Failed to parse Connect Session Auth Token`.
 
 ## JQL search endpoint
 
 For fetching sibling tasks, epic children, or related issues. Use the **v3 enhanced search** path; the deprecated `/rest/api/2/search` returns no `issues` array on recent Atlassian Cloud tenants.
 
 ```bash
-curl -s \
-  -u "$EMAIL:$TOKEN" \
-  -H "Accept: application/json" \
-  "$JIRA_BASE_URL/rest/api/3/search/jql?jql=parent%3D{PARENT-KEY}%20ORDER%20BY%20rank%20ASC&fields=summary,status,issuetype,assignee"
+python3 "$JIRA_CLI" search --jql "parent=PARENT-KEY ORDER BY rank ASC" --fields "summary,status,issuetype,assignee" --project-root "$PROJECT_ROOT"
 ```
 
 For walking an epic's children with rank + block-graph awareness, prefer the dedicated `jira-epic-walker` skill over hand-rolling this query.

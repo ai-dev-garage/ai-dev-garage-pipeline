@@ -14,24 +14,13 @@ argument-hint: Jira ticket key or URL (e.g. PROJ-1234)
 
 ## Instructions
 
-### 1. Resolve API base URL and token
+### 1. Set up the Jira CLI
 
-Build **`JIRA_BASE_URL`** (no trailing slash) and **`JIRA_API_TOKEN`** by **overlay** (later steps override earlier ones for each field independently). See **[REFERENCE.md — Credential precedence](references/REFERENCE.md)**.
+Set `JIRA_CLI=”${CLAUDE_PLUGIN_ROOT}/scripts/jira_cli.py”`. The script handles credential resolution internally through the same 4-layer overlay documented in **[REFERENCE.md — Credential precedence](references/REFERENCE.md)** (global env file → project env file → process environment → CLI args).
 
-For each env-file layer, read the **canonical** path first; if missing, fall back to the **legacy** path. When a legacy file is hit, emit a one-line stderr deprecation note suggesting migration to the canonical path.
+Always pass `--project-root “$PROJECT_ROOT”` when `PROJECT_ROOT` is set. If the caller supplied `jira-base-url` / `jira-api-token`, pass them as `--base-url` / `--token`. If the caller supplied `jira-user-email`, pass it as `--email`.
 
-1. **Global env file:**
-   - Canonical: `~/.ai-dev-garage/secrets.env`
-   - Legacy: `~/.config/ai-garage/jira.env`
-2. **Project env file** (if `PROJECT_ROOT` is set):
-   - Canonical: `{PROJECT_ROOT}/.ai-dev-garage/secrets.env`
-   - Legacy: `{PROJECT_ROOT}/.config/ai-garage/jira.env`
-3. **Process environment:** `JIRA_BASE_URL`, `JIRA_API_TOKEN`; use **`ATLASSIAN_API_TOKEN`** only if `JIRA_API_TOKEN` is unset. If token is still unset and `CONFLUENCE_API_TOKEN` is present in the environment, use it as a last-resort fallback (same Atlassian account, same token).
-4. **Caller-supplied** `jira-base-url` / `jira-api-token` when non-empty (wins over files and env).
-
-Env-file format: `KEY=value` lines, `#` comments skipped, no spaces around `=`. Start from **`jira.template.env`** in the plugin root — copy to either canonical path and edit.
-
-**Do not** ask the user to paste the API token into chat. If either value is still missing after this pass, stop and use the **“When credentials are missing”** reply from **[REFERENCE.md](references/REFERENCE.md)**.
+If the script exits with code **2** (credentials missing), read the `hint` field from the stderr JSON and surface it to the user as a one-liner. **Do not** ask the user to paste the API token into chat.
 
 ### 2. Extract the ticket key
 
@@ -39,13 +28,24 @@ Extract the ticket key from URL or raw input using pattern `[A-Za-z]+-\d+`. Uppe
 
 ### 3. Fetch ticket details
 
-Set shell variables `JIRA_BASE_URL`, `TOKEN` (from resolved API token), and `KEY`, then run the **`curl`** command in **[REFERENCE.md — Fetch single issue](references/REFERENCE.md)**.
+Run the CLI to fetch the ticket:
 
-Handle errors:
+```bash
+python3 "$JIRA_CLI" fetch "$KEY" --project-root "$PROJECT_ROOT"
+```
 
-- **401/403:** Token invalid or expired — point user to **[REFERENCE.md — Setup](references/REFERENCE.md)** (rotate token, check env file).
-- **404:** Ticket not found — verify the key.
-- **Other:** Report HTTP status and response body.
+For sibling tasks under a parent:
+
+```bash
+python3 "$JIRA_CLI" search --jql "parent=$PARENT_KEY ORDER BY created ASC" --fields "summary,status,issuetype,assignee" --project-root "$PROJECT_ROOT"
+```
+
+Parse the JSON output from stdout. Handle errors by exit code:
+
+- **Exit 1 with `http_status: 401` or `403`:** Token invalid or expired — point user to **[REFERENCE.md — Setup](references/REFERENCE.md)** (rotate token, check env file).
+- **Exit 1 with `http_status: 404`:** Ticket not found — verify the key.
+- **Exit 1 (other):** Report the `error` and `http_status` from stderr JSON.
+- **Exit 2:** Credentials missing — surface the `hint` from stderr JSON.
 
 ### 4. Present the summary
 

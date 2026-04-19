@@ -53,16 +53,15 @@ $ARGUMENTS
    Only if both base URL and token resolved, issue a single authenticated request:
 
    ```bash
-   curl -s -o /dev/null -w "%{http_code}" \
-     -H "Authorization: Bearer $TOKEN" \
-     -H "Content-Type: application/json" \
-     "$JIRA_BASE_URL/rest/api/2/myself"
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/jira_cli.py" auth-test --project-root "$PROJECT_ROOT"
    ```
 
-   - `200` → `OK: Jira reachable`.
-   - `401`/`403` → `FAIL: Jira rejected the token — rotate it via Atlassian account settings`.
-   - `404` → `FAIL: /rest/api/2/myself not found — verify JIRA_BASE_URL points at a Jira Cloud site, not a Confluence or root domain`.
-   - Other → `FAIL: HTTP <status> — <status-name>`.
+   Interpret the result by exit code:
+   - **Exit 0** with `http_status: 200` → `OK: Jira reachable`.
+   - **Exit 1** with `http_status: 401` or `403` → `FAIL: Jira rejected the token — rotate it via Atlassian account settings`.
+   - **Exit 1** with `http_status: 404` → `FAIL: /rest/api/2/myself not found — verify JIRA_BASE_URL points at a Jira Cloud site, not a Confluence or root domain`.
+   - **Exit 1** (other) → `FAIL: HTTP <status> — <error>`.
+   - **Exit 2** → `FAIL: credentials not found` (should not reach here since step 4 already checked).
 
    Do **not** fetch any tickets in doctor. One round-trip, no PII beyond the authenticated user's display name (optional, do not print).
 
