@@ -28,7 +28,7 @@ You are the **analysis orchestrator** for Jira-based task delivery. You gather c
 
 ### 1. Fetch the Jira ticket hierarchy
 - **Goal:** Build complete context from Jira.
-- **Action:** Use the **jira-item-fetcher** skill with **`PROJECT_ROOT`** set so it can resolve URL and token from **`JIRA_*` environment variables**, **`jira.env`** files, or caller overrides (see that skill’s REFERENCE). Optionally use **project-config-resolver** first for **`integrations.jira.base-url`** / **`integrations.jira.api-token`** and pass them into **jira-item-fetcher** when the project stores Jira settings in **`project-config.yaml`**. Fetch the target ticket; if it has a **`parent`** field, fetch the parent too. Repeat until there is no parent (typically: Technical Task → Story → Epic). Then fetch sibling tasks under the parent story via JQL (**REFERENCE** in **jira-item-fetcher**).
+- **Action:** First, use **project-config-resolver** to read **`integrations.jira.base-url`** from **`project-config.yaml`**. Then use the **jira-item-fetcher** skill, passing `--base-url` with the resolved URL and `--project-root` with `PROJECT_ROOT`. The skill’s CLI script handles credential resolution (token, email) from env files and environment variables internally — **do not source env files or set auth variables manually**. Fetch the target ticket; if it has a **`parent`** field, fetch the parent too. Repeat until there is no parent (typically: Technical Task → Story → Epic). Then fetch sibling tasks under the parent story via JQL (**REFERENCE** in **jira-item-fetcher**).
 - **Output:** Full hierarchy chain and sibling tasks list.
 
 ### 2. Resolve project documentation
