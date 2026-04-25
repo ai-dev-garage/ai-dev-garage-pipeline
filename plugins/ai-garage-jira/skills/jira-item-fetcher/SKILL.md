@@ -16,14 +16,14 @@ argument-hint: Jira ticket key or URL (e.g. PROJ-1234)
 
 ### 1. Set up the Jira CLI
 
-Set `JIRA_CLI=”${CLAUDE_PLUGIN_ROOT}/scripts/jira_cli.py”`. The script handles credential resolution internally — it reads env files, environment variables, and CLI args on its own. See **[REFERENCE.md — Credential precedence](references/REFERENCE.md)** for the full overlay.
+Set `JIRA_CLI="${CLAUDE_PLUGIN_ROOT}/scripts/jira_cli.py"`. The script handles credential resolution internally — it reads env files, environment variables, and CLI args on its own. See **[REFERENCE.md — Credential precedence](references/REFERENCE.md)** for the full overlay.
 
-**Every Jira call must be a single `python3 “$JIRA_CLI” …` command.** Do **not** source env files (`set -a; source …; set +a`), set `AUTH` / `TOKEN` / `BASE` shell variables, or use `curl` directly — the script does all of that internally.
+**Every Jira call must be a single `python3 "$JIRA_CLI" …` command.** Do **not** source env files (`set -a; source …; set +a`), set `AUTH` / `TOKEN` / `BASE` shell variables, or use `curl` directly — the script does all of that internally.
 
-Pass known values as CLI flags:
-- `--project-root “$PROJECT_ROOT”` — always, when `PROJECT_ROOT` is set (the script reads `secrets.env` from this path).
-- `--base-url “$JIRA_BASE_URL”` — when the base URL is known (e.g. from `integrations.jira.base-url` in project-config or from the caller).
-- `--token “$JIRA_API_TOKEN”` / `--email “$JIRA_USER_EMAIL”` — when the caller already resolved them.
+Common flags (accepted before or after the subcommand):
+- `--project-root "$PROJECT_ROOT"` — always, when `PROJECT_ROOT` is set (the script reads `secrets.env` from this path).
+- `--base-url "$JIRA_BASE_URL"` — when the base URL is known (e.g. from `integrations.jira.base-url` in project-config or from the caller).
+- `--token "$JIRA_API_TOKEN"` / `--email "$JIRA_USER_EMAIL"` — when the caller already resolved them.
 
 If the script exits with code **2** (credentials missing), read the `hint` field from the stderr JSON and surface it to the user as a one-liner. **Do not** ask the user to paste the API token into chat.
 
