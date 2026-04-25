@@ -327,34 +327,45 @@ def cmd_auth_test(args):
 # ---------------------------------------------------------------------------
 
 def _build_parser():
+    # Common options shared between the top-level parser and every subparser,
+    # so flags like --project-root work whether they appear before OR after
+    # the subcommand name (e.g. `jira_cli.py fetch KEY --project-root \u2026`
+    # and `jira_cli.py --project-root \u2026 fetch KEY` are both accepted).
+    # default=SUPPRESS is critical: subparsers copy a fresh namespace back to
+    # the parent, so a regular default=None would overwrite a value the user
+    # passed *before* the subcommand. SUPPRESS leaves the attribute unset
+    # when the flag is absent, and the cmd_* handlers use getattr(..., None).
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--base-url", dest="base_url", default=argparse.SUPPRESS,
+                         help="Jira base URL (overrides env/file)")
+    common.add_argument("--token", default=argparse.SUPPRESS,
+                         help="API token (overrides env/file)")
+    common.add_argument("--email", default=argparse.SUPPRESS,
+                         help="User email for Basic auth (overrides env/file)")
+    common.add_argument("--project-root", dest="project_root", default=argparse.SUPPRESS,
+                         help="Project root for env file resolution")
+    common.add_argument("--timeout", type=int, default=argparse.SUPPRESS,
+                         help="HTTP timeout in seconds (default: 30)")
+
     p = argparse.ArgumentParser(
         prog="jira_cli.py",
         description="AI Dev Garage \u2014 Jira REST API CLI",
+        parents=[common],
     )
-
-    # Common options
-    p.add_argument("--base-url", dest="base_url", default=None,
-                    help="Jira base URL (overrides env/file)")
-    p.add_argument("--token", default=None,
-                    help="API token (overrides env/file)")
-    p.add_argument("--email", default=None,
-                    help="User email for Basic auth (overrides env/file)")
-    p.add_argument("--project-root", dest="project_root", default=None,
-                    help="Project root for env file resolution")
-    p.add_argument("--timeout", type=int, default=None,
-                    help="HTTP timeout in seconds (default: 30)")
 
     sub = p.add_subparsers(dest="subcommand")
 
     # fetch
-    f = sub.add_parser("fetch", help="Fetch a single Jira issue")
+    f = sub.add_parser("fetch", parents=[common],
+                        help="Fetch a single Jira issue")
     f.add_argument("key", help="Jira issue key (e.g. PROJ-123)")
     f.add_argument("--fields", default=None,
                     help="Comma-separated field list")
     f.set_defaults(func=cmd_fetch)
 
     # search
-    s = sub.add_parser("search", help="Search issues via JQL")
+    s = sub.add_parser("search", parents=[common],
+                        help="Search issues via JQL")
     s.add_argument("--jql", required=True, help="JQL query string")
     s.add_argument("--fields", default=None,
                     help="Comma-separated field list")
@@ -363,7 +374,8 @@ def _build_parser():
     s.set_defaults(func=cmd_search)
 
     # create-issue
-    ci = sub.add_parser("create-issue", help="Create a Jira issue (typically a sub-task)")
+    ci = sub.add_parser("create-issue", parents=[common],
+                         help="Create a Jira issue (typically a sub-task)")
     ci.add_argument("--project", required=True, help="Project key")
     ci.add_argument("--parent", required=True, help="Parent issue key")
     ci.add_argument("--summary", required=True, help="Issue summary")
@@ -373,19 +385,20 @@ def _build_parser():
     ci.set_defaults(func=cmd_create_issue)
 
     # get-transitions
-    gt = sub.add_parser("get-transitions",
+    gt = sub.add_parser("get-transitions", parents=[common],
                          help="List available transitions for an issue")
     gt.add_argument("key", help="Jira issue key")
     gt.set_defaults(func=cmd_get_transitions)
 
     # transition
-    t = sub.add_parser("transition", help="Execute a transition on an issue")
+    t = sub.add_parser("transition", parents=[common],
+                        help="Execute a transition on an issue")
     t.add_argument("key", help="Jira issue key")
     t.add_argument("--id", required=True, help="Transition ID")
     t.set_defaults(func=cmd_transition)
 
     # auth-test
-    at = sub.add_parser("auth-test",
+    at = sub.add_parser("auth-test", parents=[common],
                          help="Test authentication via GET /rest/api/2/myself")
     at.set_defaults(func=cmd_auth_test)
 
