@@ -29,6 +29,31 @@ models:
   medium: sonnet                    # Planning, finalization
   high: inherit                     # Complex implementation
 
+# Phase-type routing — maps WBS [type:] annotations to model + skill overrides.
+# The implementation-planner annotates each phase header with [type:...];
+# deliver-task reads this table to select the model override and skill for
+# implement-task. Values: model accepts haiku | sonnet | opus | inherit |
+# full-model-id. skill accepts any skill name from this plugin (or null).
+implementation-routing:
+  business-logic:
+    model: opus
+    skill: code-implementation
+  unit-test:
+    model: haiku
+    skill: unit-test-implementation
+  integration-test:
+    model: sonnet
+    skill: integration-test-implementation
+  verify:
+    model: haiku
+    skill: null                       # No skill — phase runs commands directly
+  config:
+    model: haiku
+    skill: code-implementation
+  default:
+    model: sonnet
+    skill: code-implementation        # Fallback for phases without [type:]
+
 integrations:
   jira:
     # Credentials — prefer environment variables (JIRA_BASE_URL, JIRA_API_TOKEN)

@@ -51,6 +51,8 @@ The caller specifies which value(s) they need. Supported keys:
 - `integrations.assistant.notion-parent-page-id`
 - `integrations.assistant.default-tags`
 - `integrations.assistant.session-prefix`
+- `implementation-routing.<type>.model` (where `<type>` is any key under `implementation-routing`)
+- `implementation-routing.<type>.skill`
 
 Resolve only the requested keys. Callers must handle a `null` return gracefully.
 

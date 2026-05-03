@@ -31,6 +31,26 @@ models:
   medium: sonnet                  # Mid-tier for planning, finalization
   high: inherit                   # Expensive model for complex implementation
 
+implementation-routing:
+  business-logic:
+    model: opus
+    skill: code-implementation
+  unit-test:
+    model: haiku
+    skill: unit-test-implementation
+  integration-test:
+    model: sonnet
+    skill: integration-test-implementation
+  verify:
+    model: haiku
+    skill: null
+  config:
+    model: haiku
+    skill: code-implementation
+  default:
+    model: sonnet
+    skill: code-implementation
+
 integrations:
   jira:
     base-url: null                # e.g. https://jira.example.com
@@ -78,6 +98,8 @@ All path resolution is delegated to `ai-garage-core:config-merger`. Consumers sh
 | `integrations.jira.transitions.review-started` | `"In Review"` |
 | `integrations.jira.transitions.phase-ready` | `"Ready"` |
 
+| `implementation-routing` | (entire section) `null` — callers apply built-in defaults when absent |
+
 All other keys have no default and must be provided by the user or left as `null`.
 
 ## Credential handling
@@ -115,3 +137,5 @@ Stack identifiers are used by agents to resolve stack-specific extension skills 
 | `integrations.assistant.notion-mcp-connector` | Non-empty string matching an installed MCP connector |
 | `integrations.assistant.notion-database-id` | Non-empty string (Notion database id / UUID) |
 | `integrations.assistant.default-tags` | List of strings |
+| `implementation-routing.<type>.model` | One of: `haiku`, `sonnet`, `opus`, `inherit`, or a full model ID |
+| `implementation-routing.<type>.skill` | Skill name string, or `null` to skip skill delegation |
