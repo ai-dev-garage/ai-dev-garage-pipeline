@@ -6,6 +6,8 @@ description: >-
   directly — the orchestrator reads the report and updates the WBS.
 skills:
   - ai-garage-dev-workflow:code-implementation
+  - ai-garage-dev-workflow:unit-test-implementation
+  - ai-garage-dev-workflow:integration-test-implementation
   - ai-garage-dev-workflow:test-failure-fixer
   - ai-garage-dev-workflow:feature-branch-guard
   - ai-garage-dev-workflow:project-config-resolver
@@ -15,10 +17,12 @@ inputs:
   - PHASE-KEY (e.g. phase-1-data-model)
   - PROJECT_ROOT
   - execution_mode (optional, from deliver-task: A/B/C)
+  - implementation_skill (optional, from deliver-task routing: code-implementation | unit-test-implementation | integration-test-implementation | null)
 outputs:
   - .ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/{PHASE-KEY}/work-report.md
 effort_level: high
 model: inherit
+color: orange
 tools: Agent, Bash, Edit, Glob, Grep, Read, Skill, Write, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList
 constraints:
   - requires nested Agent dispatch to spawn parallel sub-agents for [PARALLEL:group] items; must be invokable in a context where the Agent tool is available
@@ -53,7 +57,10 @@ You are the **phase executor** for task delivery. You implement all items in a g
 - **Action:** For each item in the phase, top to bottom:
 
 1. Check for `[PARALLEL:group]` tag. If this item starts a parallel group, identify all items in the same group and spawn background sub-agents for each (using the effort level's corresponding model). Wait for all to complete before proceeding to next sequential item.
-2. For sequential items: implement using the **code-implementation** skill. Pass constitution rules and scope context as inputs. If `project.stack` is set, also load `{stack}-code-implementation` skills from installed plugins and apply their patterns on top.
+2. For sequential items: determine which implementation skill to use:
+   a. If `implementation_skill` was provided by the caller (deliver-task routing), use that skill. If the value is `null`, this is a verify/command-only phase — execute the WBS items directly (run commands, no skill delegation).
+   b. If `implementation_skill` was not provided (standalone invocation or legacy WBS without type annotations), fall back to the **code-implementation** skill.
+   c. Implement using the resolved skill. Pass constitution rules and scope context as inputs. If `project.stack` is set, also load `{stack}-<resolved-skill-name>` extensions from installed plugins and apply their patterns on top (e.g., `java-unit-test-implementation` for a Java project with `implementation_skill=unit-test-implementation`).
 3. **Narrow per-item verification** — run the narrowest build/test command that can fail fast on the code just written. Prefer module-scoped commands (e.g. `./gradlew :<module>:test`, `pytest path/to/touched/dir`, `npm test -- --scope=<pkg>`) over the project-wide verification command. Defer the project-wide command (`project.build-command`, `project.test-command`) to the dedicated `phase-N-verify` phase — unless the WBS item explicitly justifies running it here (e.g. a cross-module wiring refactor). This keeps per-phase Bash invocations cheap.
 4. If per-item tests/build fail, use **test-failure-fixer** skill (up to 5 retries) at the same narrow scope. Only escalate to the project-wide command when the narrow command has been green but the WBS item explicitly demands wider verification. If `project.stack` is set, also load `{stack}-test-patterns` skills if available.
 5. Record the result for this item (status, files changed, narrow-build/test outcome, blockers). Do **not** invoke `code-quality-review` per item — the phase-level review in step 3a covers all files in the phase at once.
@@ -103,7 +110,7 @@ You are the **phase executor** for task delivery. You implement all items in a g
 
 ## Rules
 
-- **Stack extensions:** When `project.stack` is set, look for `{stack}-code-implementation` and `{stack}-test-patterns` skills in installed plugins. Load and apply them alongside the base skills. Naming convention: `{stack}-{base-skill-name}`.
+- **Stack extensions:** When `project.stack` is set, look for `{stack}-<resolved-skill-name>` skills in installed plugins (e.g., `java-code-implementation`, `java-unit-test-implementation`, `java-integration-test-implementation`). Also load `{stack}-test-patterns` if available. Naming convention: `{stack}-{base-skill-name}`.
 - Use **project-config-resolver** for build/test commands and stack detection — never hardcode. Pass resolved values to skills as inputs.
 - **Verification scope is narrow by default.** Per-item, run the narrowest command that exercises the item. Project-wide verification belongs in the `phase-N-verify` phase produced by the planner — do not pre-empt it on every item.
 - **Quality review runs once per phase**, not per item. See step 3a. The exception is the final task-level review in `finalize-task`, which runs over every file touched by the task.

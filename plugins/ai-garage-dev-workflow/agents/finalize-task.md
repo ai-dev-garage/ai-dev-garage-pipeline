@@ -14,7 +14,8 @@ inputs:
 outputs:
   - finalization-report.md in workflow state directory
 effort_level: medium
-model: inherit
+model: sonnet
+color: green
 constraints:
   - read-only analysis until report is written
   - do not modify implementation code

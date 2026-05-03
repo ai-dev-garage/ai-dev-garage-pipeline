@@ -20,8 +20,8 @@ inputs:
   - PROJECT_ROOT
 outputs:
   - workflow state files in .ai-dev-garage/.workflow-state-tmp/{TASK-KEY}/
-effort_level: medium
-model: inherit
+model: opus
+color: cyan
 tools: Agent, Bash, Edit, Glob, Grep, Read, Skill, Write, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList
 constraints:
   - always run state detection before any phase
@@ -138,26 +138,36 @@ Present the state summary to the user. Offer options: **Continue**, **Re-run pha
 - **Action:** Repeat until all phases are `[DONE]`:
 
   1. **Find ready phases:** Parse `[depends-on:]` annotations. A phase is ready when its status is `NOT STARTED` and all its dependencies are `[DONE]`. Phases without `[depends-on:]` depend on the immediately preceding phase.
-  2. **Dispatch:**
+  2. **Resolve routing for each ready phase:**
+     1. Parse the `[type:]` annotation from the phase header. If absent, use `default`.
+     2. Use **project-config-resolver** to read `implementation-routing.<type>.model` and `implementation-routing.<type>.skill`. If the `implementation-routing` section is absent from config, apply built-in defaults:
+        - `business-logic` → model=opus, skill=code-implementation
+        - `unit-test` → model=haiku, skill=unit-test-implementation
+        - `integration-test` → model=sonnet, skill=integration-test-implementation
+        - `verify` → model=haiku, skill=null
+        - `config` → model=haiku, skill=code-implementation
+        - `default` → model=sonnet, skill=code-implementation
+     3. The resolved `model` becomes the Agent tool model override when spawning **implement-task**. The resolved `skill` becomes the `implementation_skill` input argument.
+  3. **Dispatch:**
      - **Jira sync — phase started:** Before delegating, if the phase has a `[jira:KEY]` annotation and `integrations.jira.sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with `TASK-KEY`, the sub-task key, and `event=phase-started`. The skill reads `jira-transitions.json` for the resolved id — no per-call `/transitions` GET. On failure: warn, continue.
-     - **One ready phase:** Delegate to **implement-task** sequentially with `TASK-KEY`, `PHASE-KEY`, and `execution_mode`.
-     - **Multiple ready phases:** At your discretion, you may spawn parallel **implement-task** agents (one per phase, as background sub-agents). Consider running in parallel when:
+     - **One ready phase:** Delegate to **implement-task** with `TASK-KEY`, `PHASE-KEY`, `execution_mode`, the resolved `model` override, and `implementation_skill`.
+     - **Multiple ready phases:** At your discretion, you may spawn parallel **implement-task** agents (one per phase, as background sub-agents), each with its own resolved model and skill from step 2. Consider running in parallel when:
        - Execution mode is autonomous or batch
        - Phases target clearly separate modules/files
        - Phases are low-to-medium effort
      - When in doubt or in full-control mode, run sequentially.
-  3. **Reconcile:** After agent(s) return, read each `{PHASE-KEY}/work-report.md`. For each item:
+  4. **Reconcile:** After agent(s) return, read each `{PHASE-KEY}/work-report.md`. For each item:
      - `status: done` → mark `[DONE]` in WBS
      - `status: blocked` → keep `[IN PROGRESS]`, note blocker
      - `status: partial` → keep `[IN PROGRESS]`
      - **Jira sync — phase implemented:** After reconciling, if the phase has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with `TASK-KEY`, the sub-task key, and `event=phase-implemented`. Cache-first resolution applies. On failure: warn, continue.
-  4. **Code quality review (medium/high effort phases):**
+  5. **Code quality review (medium/high effort phases):**
      - **Jira sync — review started:** Before running the quality review, if the phase has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with `TASK-KEY`, the sub-task key, and `event=review-started`. Cache-first resolution applies. On failure: warn, continue.
-  5. If all items in a phase are `[DONE]`, mark the phase `[DONE]` and write `### Implementation Summary` from the work report.
+  6. If all items in a phase are `[DONE]`, mark the phase `[DONE]` and write `### Implementation Summary` from the work report.
      - **Jira sync — phase ready:** After marking the phase `[DONE]`, if it has a `[jira:KEY]` annotation and `sync-phases` is `true`, call **jira-phase-sync** in `transition` mode with `TASK-KEY`, the sub-task key, and `event=phase-ready`. Cache-first resolution applies. On failure: warn, continue.
-  6. Present updated WBS status. If blockers exist, ask user how to proceed — this gate applies in **all** modes, including autonomous.
-  7. **Gate before next round** (depends on `execution-mode.txt`):
-     - `autonomous` — if no blocker was recorded in step 6, advance to the next phase without prompting. Emit a one-line `Phase <key> complete — advancing (autonomous mode).`
+  7. Present updated WBS status. If blockers exist, ask user how to proceed — this gate applies in **all** modes, including autonomous.
+  8. **Gate before next round** (depends on `execution-mode.txt`):
+     - `autonomous` — if no blocker was recorded in step 7, advance to the next phase without prompting. Emit a one-line `Phase <key> complete — advancing (autonomous mode).`
      - `stop-at-phase-<N>` — advance without prompting until the phase whose key matches `<N>` (or whose ordinal matches, if `<N>` is a number) has been dispatched; after that phase completes, fall back to full-control prompting.
      - `full-control` (or file missing) — ask `Continue / Re-run / Stop` as today.
 

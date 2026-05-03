@@ -13,8 +13,8 @@ inputs:
   - PROJECT_ROOT
 outputs:
   - work-breakdown-structure.md in workflow state directory
-effort_level: medium
-model: inherit
+model: opus
+color: purple
 constraints:
   - do not persist WBS until user confirms at review gate
   - preserve DONE items in update mode
@@ -58,34 +58,36 @@ Format:
 ```markdown
 ## Progress
 
-### phase-1-domain-models [NOT STARTED]
+### phase-1-domain-models [NOT STARTED] [type:business-logic]
 - [ ] Create User entity [effort:low]
 - [ ] Create Order entity [effort:low]
 
-### phase-2-api-interfaces [NOT STARTED] [depends-on:phase-1-domain-models]
+### phase-2-api-interfaces [NOT STARTED] [depends-on:phase-1-domain-models] [type:business-logic]
 - [ ] Define UserService interface [effort:low]
 - [ ] Define OrderService interface [effort:low]
 
-### phase-3-impl-user-service [NOT STARTED] [depends-on:phase-2-api-interfaces]
+### phase-3-impl-user-service [NOT STARTED] [depends-on:phase-2-api-interfaces] [type:business-logic]
 - [ ] Implement UserService [effort:medium]
 
-### phase-4-impl-order-service [NOT STARTED] [depends-on:phase-2-api-interfaces]
+### phase-4-impl-order-service [NOT STARTED] [depends-on:phase-2-api-interfaces] [type:business-logic]
 - [ ] Implement OrderService [effort:medium]
 
-### phase-5-unit-tests [NOT STARTED] [depends-on:phase-2-api-interfaces]
+### phase-5-unit-tests [NOT STARTED] [depends-on:phase-2-api-interfaces] [type:unit-test]
 - [ ] Write UserService unit tests [effort:medium]
 - [ ] Write OrderService unit tests [effort:medium]
 
-### phase-6-integration [NOT STARTED] [depends-on:phase-3-impl-user-service,phase-4-impl-order-service,phase-5-unit-tests]
+### phase-6-integration [NOT STARTED] [depends-on:phase-3-impl-user-service,phase-4-impl-order-service,phase-5-unit-tests] [type:integration-test]
 - [ ] Integration tests [effort:high]
 
-### phase-7-verify [NOT STARTED] [depends-on:phase-6-integration]
+### phase-7-verify [NOT STARTED] [depends-on:phase-6-integration] [type:verify]
 - [ ] Run project-wide verification command (e.g. ./gradlew build) [effort:low]
 - [ ] Run project-wide test command (e.g. ./gradlew testCombined) [effort:low]
 - [ ] Application-context smoke test, if applicable [effort:low]
 ```
 
 Intermediate phases MAY include one module-scoped sanity check (e.g. `./gradlew :<module>:test`); the full project-wide verification is concentrated in the final `phase-N-verify` phase per the Verification-phase rule below.
+
+Each phase header includes a `[type:]` annotation from the implementation routing vocabulary: `business-logic`, `unit-test`, `integration-test`, `verify`, `config`. The orchestrator uses this to select the implementation skill and model override for the phase. If a phase does not map cleanly to a single type, use the closest match or `business-logic` as the general-purpose default.
 
 For each WBS item:
 - Assign an `effort:` annotation (`low`, `medium`, or `high`) based on complexity.
@@ -131,6 +133,22 @@ For each WBS item:
 - Use `[depends-on:phase-key,...]` to express which phases must complete before this phase can start.
 - Phases without `[depends-on:]` depend on the immediately preceding phase (sequential by default).
 - Multiple phases may depend on the same predecessor — the orchestrator may execute them in parallel.
+
+### Phase type annotation rules
+
+Each phase header carries a `[type:]` tag that drives model and skill selection at dispatch time. Recognized types:
+
+| Type | Use for | Routed skill |
+|---|---|---|
+| `business-logic` | Production code, domain models, APIs, DI wiring | `code-implementation` |
+| `unit-test` | Isolated tests — no framework context, no I/O | `unit-test-implementation` |
+| `integration-test` | Tests with real dependencies, end-to-end flows | `integration-test-implementation` |
+| `verify` | Build/test commands only, no code writing | (none — commands run directly) |
+| `config` | Configuration files, infrastructure setup | `code-implementation` |
+
+- Every phase MUST have a `[type:]` annotation. Omitting it forces a `default` fallback which may select a suboptimal model.
+- In update mode, existing phases without `[type:]` are left as-is — do not retrofit types onto `[DONE]` or `[IN PROGRESS]` phases.
+- Additional types may be defined in `project-config.yaml` under `implementation-routing`.
 
 ### File-boundary safety for parallel phases
 

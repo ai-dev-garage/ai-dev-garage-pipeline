@@ -34,7 +34,9 @@ $ARGUMENTS
    | `test-failure-fixer` | Diagnose and fix test failures (up to 5 retries) |
    | `change-publisher` | Analyze, split, commit, and push changes |
    | `task-gap-clarification` | Interactively resolve analysis gaps |
-   | `code-implementation` | Implement code with constitution compliance |
+   | `code-implementation` | Implement production code with constitution compliance |
+   | `unit-test-implementation` | Implement unit tests with isolation-first patterns |
+   | `integration-test-implementation` | Implement integration tests with real dependencies |
    | `code-quality-review` | Paradigm-aware design quality review (cohesion, coupling, abstraction) |
    | `github-workflow` | Commits, PR creation, PR review conventions, and branch sync |
 
